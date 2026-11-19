@@ -5,6 +5,8 @@ export type StrokePoint = [number, number, number];
 
 export interface Stroke {
   id: string;
+  /** Layer this stroke belongs to. */
+  layerId: string;
   points: StrokePoint[];
   color: string;
   /** Thickness in world units (1 unit = 2 km). */
@@ -27,9 +29,10 @@ export function createDefaultBrush(): Brush {
   return { color: '#2a2a2a', size: 6 };
 }
 
-export function createStroke(brush: Brush, simulatePressure: boolean): Stroke {
+export function createStroke(brush: Brush, layerId: string, simulatePressure: boolean): Stroke {
   return {
     id: crypto.randomUUID(),
+    layerId,
     points: [],
     color: brush.color,
     size: brush.size,

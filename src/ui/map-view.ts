@@ -22,6 +22,8 @@ export interface MapView {
   setZoomLabel(scale: number): void;
   /** Turns hexcrawl mode on/off (grid + HUD label + button state). */
   setHexMode(on: boolean): void;
+  /** Paper color (from the Base layer). null = transparent. */
+  setPaperColor(color: string | null): void;
 }
 
 export function createMapView(): MapView {
@@ -104,6 +106,10 @@ export function createMapView(): MapView {
     hexButton.classList.toggle('is-active', on);
   }
 
+  function setPaperColor(color: string | null): void {
+    paper.style.fill = color ?? 'transparent';
+  }
+
   return {
     element,
     svg,
@@ -113,5 +119,6 @@ export function createMapView(): MapView {
     centerButton,
     setZoomLabel,
     setHexMode,
+    setPaperColor,
   };
 }

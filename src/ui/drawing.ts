@@ -1,4 +1,6 @@
-import type { History } from '../core/history';
+import type { Command, History } from '../core/history';
+import { BASE_LAYER_ID, createLayer, isLayerEditable, type Layer } from '../core/layer';
+import { LayerStore, type LayerPatch } from '../core/layer-store';
 import type { PalettePreset } from '../core/palette';
 import { createDefaultBrush, type Brush, type Stroke } from '../core/stroke';
 import { StrokeStore, type RemovedStroke, type StrokePatch } from '../core/stroke-store';
@@ -8,11 +10,12 @@ import { attachPencil } from '../tools/pencil';
 import { attachSelect } from '../tools/select';
 import type { ToolId } from '../tools/tool-ids';
 import { createBrushPanel } from './brush-panel';
+import { createLayersPanel } from './layers-panel';
 import type { MapView } from './map-view';
 import type { Sidebar } from './sidebar';
 import { createStrokeLayer } from './stroke-layer';
 
-/** Quick repeated edits to the same stroke (e.g. dragging a slider) merge into one undo step. */
+/** Quick repeated edits (e.g. dragging a slider or color picker) merge into one undo step. */
 const MERGE_WINDOW_MS = 1000;
 
 export interface DrawingOptions {
@@ -24,7 +27,8 @@ export interface DrawingOptions {
 }
 
 export interface Drawing {
-  store: StrokeStore;
+  strokes: StrokeStore;
+  layers: LayerStore;
   /** Call when the active tool changes. */
   onToolChange(id: ToolId): void;
   deleteSelection(): void;
@@ -33,75 +37,199 @@ export interface Drawing {
   refreshSelection(): void;
 }
 
-/** Everything about strokes: pencil, select, eraser, brush and selection panels, undo steps. */
+/** A command whose "after" state can be updated by later quick edits. */
+interface MergeableCommand<T> extends Command {
+  mergeKey: string;
+  time: number;
+  after: T;
+}
+
+/** Strokes and layers: pencil, select, eraser, brush/selection/layers panels, undo steps. */
 export function createDrawing(options: DrawingOptions): Drawing {
   const { mapView, viewport, sidebar, history } = options;
 
-  const store = new StrokeStore();
+  const strokes = new StrokeStore();
+  const layers = new LayerStore();
   const layer = createStrokeLayer(mapView.layers.drawing);
   const brush: Brush = createDefaultBrush();
   let selectedId: string | null = null;
 
-  store.onChange(() => layer.sync(store.all()));
+  // ---------- Helpers ----------
 
-  // ---------- Actions (each one creates an undo step) ----------
+  /** Strokes that can be selected/erased (their layer is visible and unlocked). */
+  function editableStrokes(): Stroke[] {
+    return strokes.all().filter((s) => {
+      const l = layers.get(s.layerId);
+      return l !== undefined && isLayerEditable(l);
+    });
+  }
+
+  /**
+   * Applies a change and records it. Quick repeated changes with the same
+   * key are merged into one undo step.
+   */
+  function pushMergeable<T>(
+    label: string,
+    key: string,
+    before: T,
+    after: T,
+    apply: (value: T) => void,
+  ): void {
+    apply(after);
+
+    const last = history.last() as MergeableCommand<T> | undefined;
+    if (last?.mergeKey === key && Date.now() - last.time < MERGE_WINDOW_MS) {
+      last.after = after;
+      last.time = Date.now();
+      return;
+    }
+
+    const command: MergeableCommand<T> = {
+      label,
+      mergeKey: key,
+      time: Date.now(),
+      after,
+      undo: () => apply(before),
+      redo: () => apply(command.after),
+    };
+    history.push(command);
+  }
+
+  // ---------- Stroke actions ----------
 
   function addStroke(stroke: Stroke): void {
-    store.insert(stroke);
+    strokes.insert(stroke);
     history.push({
       label: 'Draw',
-      undo: () => store.remove(stroke.id),
-      redo: () => store.insert(stroke),
+      undo: () => strokes.remove(stroke.id),
+      redo: () => strokes.insert(stroke),
     });
+  }
+
+  function restoreStrokes(removed: RemovedStroke[]): void {
+    // Reverse order so every stroke goes back to its exact place.
+    for (let i = removed.length - 1; i >= 0; i--) {
+      strokes.insert(removed[i].stroke, removed[i].index);
+    }
   }
 
   function pushRemoval(label: string, removed: RemovedStroke[]): void {
     if (removed.length === 0) return;
     history.push({
       label,
-      // Re-insert in reverse order so every stroke goes back to its exact place.
-      undo: () => {
-        for (let i = removed.length - 1; i >= 0; i--) {
-          store.insert(removed[i].stroke, removed[i].index);
-        }
-      },
+      undo: () => restoreStrokes(removed),
       redo: () => {
-        for (const r of removed) store.remove(r.stroke.id);
+        for (const r of removed) strokes.remove(r.stroke.id);
       },
     });
   }
 
   function updateStroke(id: string, patch: StrokePatch): void {
-    const stroke = store.get(id);
+    const stroke = strokes.get(id);
     if (!stroke) return;
-
     const before: StrokePatch = { color: stroke.color, size: stroke.size };
-    store.update(id, patch);
-    const after: StrokePatch = { color: stroke.color, size: stroke.size };
-
-    const last = history.last() as (ReturnType<typeof makeUpdateCommand> | undefined);
-    if (last?.mergeKey === id && Date.now() - last.time < MERGE_WINDOW_MS) {
-      last.after = after;
-      last.time = Date.now();
-      return;
-    }
-    history.push(makeUpdateCommand(id, before, after));
+    const after: StrokePatch = { ...before, ...patch };
+    pushMergeable('Edit stroke', `stroke:${id}`, before, after, (value) =>
+      strokes.update(id, value),
+    );
   }
 
-  function makeUpdateCommand(id: string, before: StrokePatch, after: StrokePatch) {
-    return {
-      label: 'Edit stroke',
-      mergeKey: id,
-      time: Date.now(),
-      before,
-      after,
-      undo(): void {
-        store.update(id, this.before);
+  // ---------- Layer actions ----------
+
+  function nextLayerName(): string {
+    const names = new Set(layers.all().map((l) => l.name));
+    let n = layers.all().length;
+    while (names.has(`Layer ${n}`)) n++;
+    return `Layer ${n}`;
+  }
+
+  function addLayer(): void {
+    const newLayer = createLayer(nextLayerName());
+    const previousActive = layers.getActive().id;
+    const index = layers.all().length;
+
+    layers.insert(newLayer, index);
+    layers.setActive(newLayer.id);
+
+    history.push({
+      label: 'New layer',
+      undo: () => {
+        layers.remove(newLayer.id);
+        layers.setActive(previousActive);
       },
-      redo(): void {
-        store.update(id, this.after);
+      redo: () => {
+        layers.insert(newLayer, index);
+        layers.setActive(newLayer.id);
       },
-    };
+    });
+    sidebar.setStatus(`Created "${newLayer.name}"`);
+  }
+
+  function deleteLayer(id: string): void {
+    if (id === BASE_LAYER_ID) return;
+    const target = layers.get(id);
+    if (!target) return;
+
+    const wasActive = layers.getActive().id === id;
+    const removedStrokes = strokes.removeWhere((s) => s.layerId === id);
+    const removedLayer = layers.remove(id);
+    if (!removedLayer) return;
+
+    history.push({
+      label: 'Delete layer',
+      undo: () => {
+        layers.insert(removedLayer.layer, removedLayer.index);
+        restoreStrokes(removedStrokes);
+        if (wasActive) layers.setActive(id);
+      },
+      redo: () => {
+        strokes.removeWhere((s) => s.layerId === id);
+        layers.remove(id);
+      },
+    });
+    refreshSelection();
+    sidebar.setStatus(`Deleted "${target.name}" (Ctrl+Z to undo)`);
+  }
+
+  function renameLayer(id: string, name: string): void {
+    const target = layers.get(id);
+    if (!target) return;
+    const before = target.name;
+    layers.update(id, { name });
+    history.push({
+      label: 'Rename layer',
+      undo: () => layers.update(id, { name: before }),
+      redo: () => layers.update(id, { name }),
+    });
+  }
+
+  function moveLayer(id: string, direction: 1 | -1): void {
+    const from = layers.indexOf(id);
+    const to = from + direction;
+    if (from <= 0 || to <= 0 || to >= layers.all().length) return;
+
+    layers.move(id, to);
+    history.push({
+      label: 'Move layer',
+      undo: () => layers.move(id, from),
+      redo: () => layers.move(id, to),
+    });
+  }
+
+  function toggleLayer(id: string, key: 'visible' | 'locked'): void {
+    const target = layers.get(id);
+    if (!target) return;
+    const patch: LayerPatch = { [key]: !target[key] };
+    layers.update(id, patch);
+    refreshSelection();
+  }
+
+  function setBaseColor(color: string): void {
+    const base = layers.get(BASE_LAYER_ID);
+    if (!base) return;
+    pushMergeable('Paper color', 'base-color', base.color ?? '#ffffff', color, (value) =>
+      layers.update(BASE_LAYER_ID, { color: value }),
+    );
   }
 
   // ---------- Selection ----------
@@ -113,14 +241,14 @@ export function createDrawing(options: DrawingOptions): Drawing {
   }
 
   function renderSelectionPanel(): void {
-    const stroke = selectedId ? store.get(selectedId) : undefined;
+    const stroke = selectedId ? strokes.get(selectedId) : undefined;
     sidebar.setSelectionVisible(!!stroke);
     if (stroke) selectionPanel.render({ color: stroke.color, size: stroke.size });
   }
 
   function deleteSelection(): void {
     if (!selectedId) return;
-    const removed = store.remove(selectedId);
+    const removed = strokes.remove(selectedId);
     select(null);
     if (removed) {
       pushRemoval('Delete stroke', [removed]);
@@ -128,8 +256,12 @@ export function createDrawing(options: DrawingOptions): Drawing {
     }
   }
 
+  /** Clears the selection if the stroke is gone or its layer became hidden/locked. */
   function refreshSelection(): void {
-    if (selectedId && !store.get(selectedId)) select(null);
+    if (!selectedId) return;
+    const stroke = strokes.get(selectedId);
+    const strokeLayer = stroke ? layers.get(stroke.layerId) : undefined;
+    if (!stroke || !strokeLayer || !isLayerEditable(strokeLayer)) select(null);
     else renderSelectionPanel();
   }
 
@@ -165,13 +297,38 @@ export function createDrawing(options: DrawingOptions): Drawing {
   deleteButton.className = 'panel-button panel-button--danger selection-delete';
   deleteButton.textContent = '🗑 Delete stroke (Del)';
   deleteButton.addEventListener('click', deleteSelection);
-
   sidebar.selectionSlot.append(selectionPanel.element, deleteButton);
 
-  // Keep the selection panel in sync after edits / undo.
-  store.onChange(() => {
-    if (selectedId) renderSelectionPanel();
+  const layersPanel = createLayersPanel({
+    onAdd: addLayer,
+    onActivate: (id) => layers.setActive(id),
+    onRename: renameLayer,
+    onDelete: deleteLayer,
+    onToggleVisible: (id) => toggleLayer(id, 'visible'),
+    onToggleLock: (id) => toggleLayer(id, 'locked'),
+    onMove: moveLayer,
+    onBaseColor: setBaseColor,
   });
+  sidebar.layersSlot.append(layersPanel.element);
+
+  // ---------- Keep everything in sync ----------
+
+  function renderAll(): void {
+    layer.sync(strokes.all(), layers.all());
+
+    const base = layers.get(BASE_LAYER_ID);
+    mapView.setPaperColor(base?.visible ? (base.color ?? '#ffffff') : null);
+
+    const counts = new Map<string, number>();
+    for (const s of strokes.all()) counts.set(s.layerId, (counts.get(s.layerId) ?? 0) + 1);
+    layersPanel.render(layers.all(), layers.getActive().id, counts);
+
+    if (selectedId) renderSelectionPanel();
+  }
+
+  strokes.onChange(renderAll);
+  layers.onChange(renderAll);
+  renderAll();
 
   // ---------- Tools ----------
 
@@ -179,11 +336,17 @@ export function createDrawing(options: DrawingOptions): Drawing {
     svg: mapView.svg,
     viewport,
     isActive: () => options.getActiveTool() === 'pencil',
-    getBrush: () => brush,
+    getTarget: () => {
+      const active: Layer = layers.getActive();
+      if (!active.visible) return `"${active.name}" is hidden — show it to draw`;
+      if (active.locked) return `"${active.name}" is locked — unlock it to draw`;
+      return { brush, layerId: active.id };
+    },
+    onBlocked: (reason) => sidebar.setStatus(reason),
     onPreview: (stroke) => layer.setPreview(stroke),
     onCommit: (stroke) => {
       addStroke(stroke);
-      sidebar.setStatus(`Strokes: ${store.all().length}`);
+      sidebar.setStatus(`Drew on "${layers.get(stroke.layerId)?.name ?? '?'}"`);
     },
   });
 
@@ -191,7 +354,7 @@ export function createDrawing(options: DrawingOptions): Drawing {
     svg: mapView.svg,
     viewport,
     isActive: () => options.getActiveTool() === 'select',
-    getStrokes: () => store.all(),
+    getStrokes: editableStrokes,
     onSelect: select,
   });
 
@@ -200,9 +363,9 @@ export function createDrawing(options: DrawingOptions): Drawing {
     svg: mapView.svg,
     viewport,
     isActive: () => options.getActiveTool() === 'eraser',
-    getStrokes: () => store.all(),
+    getStrokes: editableStrokes,
     onErase: (id) => {
-      const removed = store.remove(id);
+      const removed = strokes.remove(id);
       if (removed) erased.push(removed);
     },
     onEnd: () => {
@@ -220,7 +383,8 @@ export function createDrawing(options: DrawingOptions): Drawing {
   }
 
   return {
-    store,
+    strokes,
+    layers,
     onToolChange,
     deleteSelection,
     clearSelection: () => select(null),

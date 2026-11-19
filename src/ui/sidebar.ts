@@ -4,6 +4,8 @@ export interface Sidebar {
   brushSlot: HTMLElement;
   /** Container for the selected stroke controls. */
   selectionSlot: HTMLElement;
+  /** Container for the layers list. */
+  layersSlot: HTMLElement;
   /** Container for the background image controls. */
   backgroundSlot: HTMLElement;
   /** Shows/hides the Brush section (only useful with the Pencil). */
@@ -22,7 +24,6 @@ export function createSidebar(): Sidebar {
   const selection = createSection('Selected stroke');
 
   const layers = createSection('Layers');
-  layers.body.innerHTML = '<p class="sidebar__empty">No layers yet.</p>';
 
   const background = createSection('Background');
 
@@ -61,6 +62,7 @@ export function createSidebar(): Sidebar {
     element,
     brushSlot: brush.body,
     selectionSlot: selection.body,
+    layersSlot: layers.body,
     backgroundSlot: background.body,
     setBrushVisible,
     setSelectionVisible,

@@ -9,7 +9,13 @@ export interface PencilOptions {
   viewport: Viewport;
   /** True when the Pencil tool is selected. */
   isActive: () => boolean;
-  getBrush: () => Brush;
+  /**
+   * Brush and layer to draw on, or a message explaining why drawing
+   * isn't possible right now (e.g. the active layer is locked).
+   */
+  getTarget: () => { brush: Brush; layerId: string } | string;
+  /** Called when drawing is blocked, with the reason. */
+  onBlocked: (reason: string) => void;
   /** Called while drawing with the stroke in progress (null when it ends). */
   onPreview: (stroke: Stroke | null) => void;
   /** Called when a stroke is finished. */
@@ -36,9 +42,15 @@ export function attachPencil(options: PencilOptions): void {
     if (e.button !== 0 || e.defaultPrevented || !options.isActive()) return;
 
     e.preventDefault();
-    svg.setPointerCapture(e.pointerId);
 
-    const stroke = createStroke(options.getBrush(), e.pointerType !== 'pen');
+    const target = options.getTarget();
+    if (typeof target === 'string') {
+      options.onBlocked(target);
+      return;
+    }
+
+    svg.setPointerCapture(e.pointerId);
+    const stroke = createStroke(target.brush, target.layerId, e.pointerType !== 'pen');
     addPoint(stroke, e);
     current = { pointerId: e.pointerId, stroke };
     options.onPreview(stroke);

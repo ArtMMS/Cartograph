@@ -35,6 +35,22 @@ export class StrokeStore {
     return { stroke, index };
   }
 
+  /**
+   * Removes every stroke that matches. Returned in ascending index order,
+   * so re-inserting them in reverse order restores them exactly.
+   */
+  removeWhere(predicate: (stroke: Stroke) => boolean): RemovedStroke[] {
+    const removed: RemovedStroke[] = [];
+    for (let i = this.strokes.length - 1; i >= 0; i--) {
+      if (predicate(this.strokes[i])) {
+        const [stroke] = this.strokes.splice(i, 1);
+        removed.push({ stroke, index: i });
+      }
+    }
+    if (removed.length > 0) this.emit();
+    return removed.reverse();
+  }
+
   update(id: string, patch: StrokePatch): void {
     const stroke = this.get(id);
     if (!stroke) return;

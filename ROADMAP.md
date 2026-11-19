@@ -29,12 +29,12 @@ Fase 3 — Desenho
 [x] CTRL + Z
 
 Fase 4 — Camadas
-[ ] Camada Base [sempre vai começar com ela] (alterar cor)
-[ ] Criar, renomear e excluir camadas (ex.: Costa, Rios, Relevo, Fronteiras)
-[ ] Mostrar/ocultar camada
-[ ] Travar camada (não editável)
-[ ] Reordenar camadas
-[ ] Desenhar sempre na camada ativa
+[x] Camada Base [sempre vai começar com ela] (alterar cor)
+[x] Criar, renomear e excluir camadas (ex.: Costa, Rios, Relevo, Fronteiras)
+[x] Mostrar/ocultar camada
+[x] Travar camada (não editável)
+[x] Reordenar camadas
+[x] Desenhar sempre na camada ativa
 
 Fase 5 — Salvar e abrir
 [ ] Menu inicial ao abrir: "criar novo" ou "carregar arquivo"
@@ -45,6 +45,7 @@ Fase 5 — Salvar e abrir
 [ ] Definir formato do arquivo (MapFile em JSON, com versão)
 [ ] Salvar em arquivo (File System Access API)
 [ ] "Salvar" sobrescreve o arquivo aberto; "Salvar como" cria outro
+    [ ] CTRL + S for quicksave (notification after save completed)
 [ ] Abrir arquivo .json
 [ ] Imagem de fundo embutida no arquivo (base64) ou referenciada
 [ ] Aviso de alterações não salvas ao fechar a aba
@@ -52,6 +53,7 @@ Fase 5 — Salvar e abrir
 
 Fase 6 — Cidades e marcadores
 [ ] Ferramenta para colocar marcador (cidade, vila, capital, ponto de interesse)
+    [ ] Criar camada de marcadores automaticamente
 [ ] Ícones diferentes por tipo de marcador
 [ ] Nome/legenda do marcador
 [ ] Mostrar/ocultar todas as legendas
@@ -73,7 +75,6 @@ Fase 7 — Regiões e nações
 Fase 8 — Encaixe e edição
 [ ] Snap: traço começa/termina grudado na ponta de outro traço próximo
 [ ] Ligar/desligar snap e ajustar a distância
-[ ] Desfazer/refazer (Ctrl+Z / Ctrl+Y)
 [ ] Mover e duplicar elementos selecionados
 
 Fase 9 — Extras
