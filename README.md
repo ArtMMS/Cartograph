@@ -51,4 +51,3 @@ Saving directly to files uses the File System Access API, available in Chromium-
 ## License
 
 Personal project. All rights reserved.
-# Cartograph

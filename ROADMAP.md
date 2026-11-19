@@ -2,9 +2,9 @@
 Stack: TypeScript + Vite · SVG · perfect-freehand · File System Access API (Chrome/Edge)
 
 Fase 1 — Base do projeto
-[ ] Criar projeto com Vite + TypeScript
-[ ] Estrutura de pastas inicial (src/, src/core/, src/tools/, src/ui/)
-[ ] Layout da tela: barra de ferramentas, área do mapa (SVG) e painel lateral
+[x] Criar projeto com Vite + TypeScript
+[x] Estrutura de pastas inicial (src/, src/core/, src/tools/, src/ui/)
+[x] Layout da tela: barra de ferramentas, área do mapa (SVG) e painel lateral
 [ ] Zoom com a roda do mouse (centrado no cursor)
 [ ] Arrastar o mapa (pan) com botão do meio ou espaço + arrastar
 [ ] Botão "Centralizar mapa"
@@ -58,6 +58,7 @@ Fase 7 — Regiões e nações
 [ ] Lista/árvore de regiões no painel lateral
 [ ] Mostrar/ocultar regiões por tipo
 [ ] Nome da região exibido no mapa
+[ ] Ferramenta para calcular distância
 
 Fase 8 — Encaixe e edição
 [ ] Snap: traço começa/termina grudado na ponta de outro traço próximo
