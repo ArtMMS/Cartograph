@@ -1,4 +1,6 @@
 :root {
+  color-scheme: light;
+
   --bg: #e9e4d8;
   --panel: #f7f4ec;
   --panel-border: #d4ccba;
@@ -7,9 +9,26 @@
   --muted: #7a7466;
   --accent: #2f7d4f;
   --accent-soft: #d8eadf;
+  --hover: #ece6d9;
+  --grid: rgba(60, 50, 30, 0.35);
 
   --toolbar-width: 84px;
   --sidebar-width: 280px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #16171a;
+  --panel: #202227;
+  --panel-border: #34373e;
+  --paper: #2a2c31;
+  --text: #e6e3dc;
+  --muted: #9a968c;
+  --accent: #5fbf85;
+  --accent-soft: #24392c;
+  --hover: #2b2e34;
+  --grid: rgba(230, 225, 210, 0.22);
 }
 
 *,
@@ -77,7 +96,11 @@ body {
 }
 
 .toolbar__button:hover {
-  background: var(--bg);
+  background: var(--hover);
+}
+
+.toolbar__spacer {
+  flex: 1;
 }
 
 .toolbar__button.is-active {
@@ -142,12 +165,21 @@ body {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
-.map-hud__zoom {
-  min-width: 48px;
-  text-align: center;
+.map-hud__info {
+  padding: 0 4px;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   color: var(--muted);
+  white-space: nowrap;
+}
+
+.map-hud__info[hidden] {
+  display: none;
+}
+
+.map-hud__zoom {
+  min-width: 48px;
+  text-align: center;
 }
 
 .map-hud__button {
@@ -164,6 +196,23 @@ body {
 .map-hud__button:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.map-hud__button.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- Hex grid ---------- */
+
+.hex-grid {
+  pointer-events: none;
+}
+
+.hex-grid__line {
+  fill: none;
+  stroke: var(--grid);
 }
 
 /* ---------- Sidebar ---------- */

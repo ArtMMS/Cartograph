@@ -1,5 +1,6 @@
 import { createSvg } from '../core/svg';
-import { WORLD_HEIGHT, WORLD_WIDTH } from '../core/world';
+import { HEX_SIZE_KM, WORLD_HEIGHT, WORLD_WIDTH } from '../core/world';
+import { createHexGrid, type HexGrid } from './hex-grid';
 
 export interface MapView {
   element: HTMLElement;
@@ -12,10 +13,15 @@ export interface MapView {
     markers: SVGGElement;
     overlay: SVGGElement;
   };
-  /** "Center map" button in the bottom-right corner. */
+  hexGrid: HexGrid;
+  /** "Hex" toggle button in the HUD. */
+  hexButton: HTMLButtonElement;
+  /** "Center map" button in the HUD. */
   centerButton: HTMLButtonElement;
-  /** Updates the zoom percentage shown in the corner (1 = 100%). */
+  /** Updates the zoom percentage shown in the HUD (1 = 100%). */
   setZoomLabel(scale: number): void;
+  /** Turns hexcrawl mode on/off (grid + HUD label + button state). */
+  setHexMode(on: boolean): void;
 }
 
 export function createMapView(): MapView {
@@ -27,6 +33,8 @@ export function createMapView(): MapView {
     viewBox: `0 0 ${WORLD_WIDTH} ${WORLD_HEIGHT}`,
     preserveAspectRatio: 'xMinYMin meet',
   });
+
+  const defs = createSvg('defs');
 
   // Paper: the drawable area of the world.
   const paper = createSvg('rect', {
@@ -45,21 +53,36 @@ export function createMapView(): MapView {
     overlay: createSvg('g', { 'data-layer': 'overlay' }),
   };
 
+  const hexGrid = createHexGrid(defs);
+
   svg.append(
+    defs,
     paper,
     layers.background,
     layers.regions,
     layers.drawing,
+    hexGrid.element,
     layers.markers,
     layers.overlay,
   );
 
-  // HUD: zoom level + center button.
+  // ---------- HUD ----------
   const hud = document.createElement('div');
   hud.className = 'map-hud';
 
+  const hexButton = document.createElement('button');
+  hexButton.type = 'button';
+  hexButton.className = 'map-hud__button';
+  hexButton.title = 'Toggle hexcrawl grid';
+  hexButton.textContent = '⬡ Hex';
+
+  const hexLabel = document.createElement('span');
+  hexLabel.className = 'map-hud__info';
+  hexLabel.textContent = `1 hex = ${HEX_SIZE_KM} km`;
+  hexLabel.hidden = true;
+
   const zoomLabel = document.createElement('span');
-  zoomLabel.className = 'map-hud__zoom';
+  zoomLabel.className = 'map-hud__info map-hud__zoom';
   zoomLabel.textContent = '100%';
 
   const centerButton = document.createElement('button');
@@ -68,12 +91,27 @@ export function createMapView(): MapView {
   centerButton.title = 'Center map';
   centerButton.textContent = '⌖ Center';
 
-  hud.append(zoomLabel, centerButton);
+  hud.append(hexButton, hexLabel, zoomLabel, centerButton);
   element.append(svg, hud);
 
   function setZoomLabel(scale: number): void {
     zoomLabel.textContent = `${Math.round(scale * 100)}%`;
   }
 
-  return { element, svg, layers, centerButton, setZoomLabel };
+  function setHexMode(on: boolean): void {
+    hexGrid.setVisible(on);
+    hexLabel.hidden = !on;
+    hexButton.classList.toggle('is-active', on);
+  }
+
+  return {
+    element,
+    svg,
+    layers,
+    hexGrid,
+    hexButton,
+    centerButton,
+    setZoomLabel,
+    setHexMode,
+  };
 }

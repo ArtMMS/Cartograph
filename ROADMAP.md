@@ -9,7 +9,7 @@ Fase 1 — Base do projeto
 [x] Arrastar o mapa (pan) com botão do meio ou espaço + arrastar
 [x] Botão "Centralizar mapa"
 [ ] Light/Dark Mode + Button (Light = ☀️ | Dark = 🌕)
-[ ] Hexcrawl mode (Size Comparison of Europe)
+[ ] Hexcrawl mode
 
 Fase 2 — Imagem de fundo
 [ ] Carregar imagem de fundo (PNG/JPG/WEBP) do PC
