@@ -167,8 +167,13 @@ export function createLayersPanel(handlers: LayersPanelHandlers): LayersPanel {
 
       if (!row.element.querySelector('.layer-row__rename')) row.name.textContent = layer.name;
       row.name.title = layer.name;
-      row.count.textContent = String(counts.get(layer.id) ?? 0);
-      row.count.title = 'Strokes in this layer';
+      if (layer.kind === 'image') {
+        row.count.textContent = '🖼';
+        row.count.title = 'Image layer';
+      } else {
+        row.count.textContent = String(counts.get(layer.id) ?? 0);
+        row.count.title = 'Strokes in this layer';
+      }
 
       row.visible.textContent = layer.visible ? '👁' : '🚫';
       row.visible.title = layer.visible ? 'Hide layer' : 'Show layer';

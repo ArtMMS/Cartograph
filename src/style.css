@@ -683,22 +683,27 @@ body {
   margin-top: 10px;
 }
 
+.bg-panel__empty {
+  margin: 8px 0 0;
+  font-size: 12px;
+  text-align: center;
+}
+
+.bg-panel__locked {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .bg-panel__controls[hidden],
-.bg-panel__error[hidden] {
+.bg-panel__error[hidden],
+.bg-panel__empty[hidden],
+.bg-panel__locked[hidden] {
   display: none;
 }
 
-.bg-panel__header {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-bottom: 10px;
-}
-
 .bg-panel__name {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
+  margin: 0 0 10px;
   font-size: 12px;
   color: var(--muted);
   white-space: nowrap;

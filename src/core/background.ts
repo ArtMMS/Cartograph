@@ -6,6 +6,7 @@ export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 export const MIN_SCALE_PERCENT = 10;
 export const MAX_SCALE_PERCENT = 400;
 
+/** Image of an image layer (position, scale and opacity on the map). */
 export interface BackgroundImage {
   /** File name, just for display. */
   name: string;
@@ -21,15 +22,6 @@ export interface BackgroundImage {
   scale: number;
   /** 0–1. */
   opacity: number;
-  /** When locked, position and scale can't be changed. */
-  locked: boolean;
-  /** When hidden, the image isn't drawn (settings are kept). */
-  visible: boolean;
-}
-
-/** True when the image can be moved or resized. */
-export function canEditBackground(bg: BackgroundImage): boolean {
-  return !bg.locked && bg.visible;
 }
 
 export interface LoadedImage {
@@ -84,8 +76,6 @@ export function createBackground(image: LoadedImage): BackgroundImage {
     y: 0,
     scale: 1,
     opacity: 0.5,
-    locked: false,
-    visible: true,
   };
   fitBackground(bg);
   return bg;

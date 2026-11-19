@@ -6,7 +6,7 @@ export interface Sidebar {
   selectionSlot: HTMLElement;
   /** Container for the layers list. */
   layersSlot: HTMLElement;
-  /** Container for the background image controls. */
+  /** Container for the image layer controls. */
   backgroundSlot: HTMLElement;
   /** Shows/hides the Brush section (only useful with the Pencil). */
   setBrushVisible(visible: boolean): void;
@@ -25,7 +25,7 @@ export function createSidebar(): Sidebar {
 
   const layers = createSection('Layers');
 
-  const background = createSection('Background');
+  const background = createSection('Images');
 
   const details = createSection('Details');
   details.section.classList.add('sidebar__section--grow');

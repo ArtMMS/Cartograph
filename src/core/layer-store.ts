@@ -77,6 +77,11 @@ export class LayerStore {
     this.emit();
   }
 
+  /** Notifies listeners after changing a layer's image in place (position, opacity…). */
+  notify(): void {
+    this.emit();
+  }
+
   onChange(listener: () => void): void {
     this.listeners.add(listener);
   }

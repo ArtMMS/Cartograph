@@ -1,5 +1,12 @@
 import type { Command, History } from '../core/history';
-import { BASE_LAYER_ID, createLayer, isLayerEditable, type Layer } from '../core/layer';
+import type { LoadedImage } from '../core/background';
+import {
+  BASE_LAYER_ID,
+  createImageLayer,
+  createLayer,
+  isLayerEditable,
+  type Layer,
+} from '../core/layer';
 import { LayerStore, type LayerPatch } from '../core/layer-store';
 import type { PalettePreset } from '../core/palette';
 import { createDefaultBrush, type Brush, type Stroke } from '../core/stroke';
@@ -29,6 +36,10 @@ export interface DrawingOptions {
 export interface Drawing {
   strokes: StrokeStore;
   layers: LayerStore;
+  /** Adds an uploaded image as a new layer (just above Base) and makes it active. */
+  addImageLayer(image: LoadedImage): Layer;
+  /** Deletes a layer and its strokes (undoable). */
+  deleteLayer(id: string): void;
   /** Call when the active tool changes. */
   onToolChange(id: ToolId): void;
   deleteSelection(): void;
@@ -163,6 +174,28 @@ export function createDrawing(options: DrawingOptions): Drawing {
       },
     });
     sidebar.setStatus(`Created "${newLayer.name}"`);
+  }
+
+  function addImageLayer(image: LoadedImage): Layer {
+    const newLayer = createImageLayer(image);
+    const previousActive = layers.getActive().id;
+    const index = 1; // just above Base, under the drawing layers
+
+    layers.insert(newLayer, index);
+    layers.setActive(newLayer.id);
+
+    history.push({
+      label: 'Add image',
+      undo: () => {
+        layers.remove(newLayer.id);
+        layers.setActive(previousActive);
+      },
+      redo: () => {
+        layers.insert(newLayer, index);
+        layers.setActive(newLayer.id);
+      },
+    });
+    return newLayer;
   }
 
   function deleteLayer(id: string): void {
@@ -338,6 +371,9 @@ export function createDrawing(options: DrawingOptions): Drawing {
     isActive: () => options.getActiveTool() === 'pencil',
     getTarget: () => {
       const active: Layer = layers.getActive();
+      if (active.kind === 'image') {
+        return `"${active.name}" is an image layer — select a drawing layer to draw`;
+      }
       if (!active.visible) return `"${active.name}" is hidden — show it to draw`;
       if (active.locked) return `"${active.name}" is locked — unlock it to draw`;
       return { brush, layerId: active.id };
@@ -385,6 +421,8 @@ export function createDrawing(options: DrawingOptions): Drawing {
   return {
     strokes,
     layers,
+    addImageLayer,
+    deleteLayer,
     onToolChange,
     deleteSelection,
     clearSelection: () => select(null),

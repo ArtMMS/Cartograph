@@ -2,10 +2,9 @@ import {
   ACCEPTED_IMAGE_TYPES,
   MAX_SCALE_PERCENT,
   MIN_SCALE_PERCENT,
-  canEditBackground,
   getScalePercent,
-  type BackgroundImage,
 } from '../core/background';
+import { isLayerEditable, type Layer } from '../core/layer';
 
 export interface BackgroundPanelHandlers {
   onLoadFile(file: File): void;
@@ -15,35 +14,34 @@ export interface BackgroundPanelHandlers {
   onScalePercent(percent: number): void;
   onPosition(x: number, y: number): void;
   onToggleMove(): void;
-  onToggleLock(): void;
-  onToggleVisible(): void;
   onFit(): void;
   onRemove(): void;
 }
 
 export interface BackgroundPanel {
   element: HTMLElement;
-  render(bg: BackgroundImage | null, moveMode: boolean): void;
+  /** `layer` = the active layer if it's an image layer, otherwise null. */
+  render(layer: Layer | null, moveMode: boolean, imageLayerCount: number): void;
   showError(message: string): void;
 }
 
-/** Controls for the background image (sidebar "Background" section). */
+/**
+ * Sidebar "Images" section: adds images (each one becomes a layer)
+ * and adjusts the image of the active image layer.
+ */
 export function createBackgroundPanel(handlers: BackgroundPanelHandlers): BackgroundPanel {
   const element = document.createElement('div');
   element.className = 'bg-panel';
 
   element.innerHTML = `
     <input class="bg-panel__file" type="file" accept="${ACCEPTED_IMAGE_TYPES.join(',')}" hidden />
-    <button class="panel-button bg-panel__load" type="button">📂 Load image</button>
-    <p class="bg-panel__hint">or drag an image onto the map</p>
+    <button class="panel-button bg-panel__load" type="button">📂 Add image</button>
+    <p class="bg-panel__hint">or drag an image onto the map — each image becomes a layer</p>
     <p class="bg-panel__error" hidden></p>
+    <p class="bg-panel__empty sidebar__empty" hidden>Select an image layer (🖼) to adjust it.</p>
 
     <div class="bg-panel__controls" hidden>
-      <div class="bg-panel__header">
-        <p class="bg-panel__name"></p>
-        <button class="icon-button bg-panel__visible" type="button"></button>
-        <button class="icon-button bg-panel__lock" type="button"></button>
-      </div>
+      <p class="bg-panel__name"></p>
 
       <label class="field">
         <span class="field__label">Opacity</span>
@@ -73,8 +71,9 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
       <div class="button-row">
         <button class="panel-button bg-panel__move" type="button" title="Move and resize the image directly on the map">✥ Transform</button>
         <button class="panel-button bg-panel__fit" type="button" title="Fit the image to the world">Fit</button>
-        <button class="panel-button panel-button--danger bg-panel__remove" type="button">Remove</button>
+        <button class="panel-button panel-button--danger bg-panel__remove" type="button" title="Delete this image layer (Ctrl+Z to undo)">Delete</button>
       </div>
+      <p class="bg-panel__locked" hidden>Layer is locked or hidden — unlock/show it in Layers to edit.</p>
     </div>
   `;
 
@@ -83,10 +82,9 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
   const fileInput = q<HTMLInputElement>('.bg-panel__file');
   const loadButton = q<HTMLButtonElement>('.bg-panel__load');
   const error = q<HTMLParagraphElement>('.bg-panel__error');
+  const empty = q<HTMLParagraphElement>('.bg-panel__empty');
   const controls = q<HTMLDivElement>('.bg-panel__controls');
   const name = q<HTMLParagraphElement>('.bg-panel__name');
-  const visibleButton = q<HTMLButtonElement>('.bg-panel__visible');
-  const lockButton = q<HTMLButtonElement>('.bg-panel__lock');
   const opacity = q<HTMLInputElement>('.bg-panel__opacity');
   const opacityValue = q<HTMLSpanElement>('.bg-panel__opacity-value');
   const scale = q<HTMLInputElement>('.bg-panel__scale');
@@ -96,6 +94,7 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
   const moveButton = q<HTMLButtonElement>('.bg-panel__move');
   const fitButton = q<HTMLButtonElement>('.bg-panel__fit');
   const removeButton = q<HTMLButtonElement>('.bg-panel__remove');
+  const lockedNote = q<HTMLParagraphElement>('.bg-panel__locked');
 
   // ---------- Events ----------
 
@@ -125,8 +124,6 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
   posY.addEventListener('change', onPositionInput);
 
   moveButton.addEventListener('click', handlers.onToggleMove);
-  visibleButton.addEventListener('click', handlers.onToggleVisible);
-  lockButton.addEventListener('click', handlers.onToggleLock);
   fitButton.addEventListener('click', handlers.onFit);
   removeButton.addEventListener('click', handlers.onRemove);
 
@@ -137,42 +134,36 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
     if (document.activeElement !== input) input.value = String(Math.round(value));
   }
 
-  function render(bg: BackgroundImage | null, moveMode: boolean): void {
-    controls.hidden = !bg;
-    loadButton.textContent = bg ? '📂 Replace image' : '📂 Load image';
-    if (!bg) return;
+  function render(layer: Layer | null, moveMode: boolean, imageLayerCount: number): void {
+    const image = layer?.image;
+    controls.hidden = !image;
+    empty.hidden = !!image || imageLayerCount === 0;
+    if (!layer || !image) return;
 
     error.hidden = true;
-    name.textContent = bg.name;
-    name.title = bg.name;
+    name.textContent = `🖼 ${layer.name}`;
+    name.title = image.name;
 
-    const opacityPercent = bg.opacity * 100;
+    const opacityPercent = image.opacity * 100;
     setValue(opacity, opacityPercent);
     opacityValue.textContent = `${Math.round(opacityPercent)}%`;
 
-    const scalePercent = getScalePercent(bg);
+    const scalePercent = getScalePercent(image);
     setValue(scale, scalePercent);
     setValue(scaleNumber, scalePercent);
 
-    setValue(posX, bg.x);
-    setValue(posY, bg.y);
+    setValue(posX, image.x);
+    setValue(posY, image.y);
 
     moveButton.classList.toggle('is-active', moveMode);
 
-    visibleButton.textContent = bg.visible ? '👁' : '🚫';
-    visibleButton.title = bg.visible ? 'Hide background' : 'Show background';
-    visibleButton.classList.toggle('is-off', !bg.visible);
-
-    lockButton.textContent = bg.locked ? '🔒' : '🔓';
-    lockButton.title = bg.locked ? 'Unlock background' : 'Lock background';
-    lockButton.classList.toggle('is-active', bg.locked);
-
-    // Locked or hidden: position and scale can't be changed.
-    const editable = canEditBackground(bg);
+    // Locked or hidden layer: position and scale can't be changed.
+    const editable = isLayerEditable(layer);
     for (const input of [scale, scaleNumber, posX, posY]) input.disabled = !editable;
     moveButton.disabled = !editable;
     fitButton.disabled = !editable;
-    opacity.disabled = !bg.visible;
+    opacity.disabled = !layer.visible;
+    lockedNote.hidden = editable;
   }
 
   function showError(message: string): void {
@@ -180,7 +171,7 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
     error.hidden = false;
   }
 
-  render(null, false);
+  render(null, false, 0);
 
   return { element, render, showError };
 }

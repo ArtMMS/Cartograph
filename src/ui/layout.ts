@@ -1,13 +1,12 @@
 import {
-  canEditBackground,
-  createBackground,
   fitBackground,
   loadImageFile,
   setScalePercent,
   type BackgroundImage,
 } from '../core/background';
-import { applyTheme, loadTheme, type Theme } from '../core/theme';
 import { History } from '../core/history';
+import { isLayerEditable, type Layer } from '../core/layer';
+import { applyTheme, loadTheme, type Theme } from '../core/theme';
 import { Viewport } from '../core/viewport';
 import {
   createBackgroundTransform,
@@ -15,7 +14,6 @@ import {
 } from '../tools/background-transform';
 import { attachShortcuts } from '../tools/shortcuts';
 import { TOOLS, type ToolId } from '../tools/tool-ids';
-import { createBackgroundLayer } from './background-layer';
 import { createBackgroundPanel } from './background-panel';
 import { createDrawing } from './drawing';
 import { attachFileDrop } from './drop-zone';
@@ -37,8 +35,7 @@ export function createLayout(root: HTMLElement): AppLayout {
   let activeTool: ToolId = 'pan';
   let theme: Theme = loadTheme();
   let hexMode = false;
-  let background: BackgroundImage | null = null;
-  let transformBackground = false;
+  let transformMode = false;
   let transform: BackgroundTransform | null = null;
   const history = new History();
 
@@ -76,102 +73,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     mapView.setHexMode(hexMode);
   });
 
-  // ---------- Background image ----------
-
-  const backgroundLayer = createBackgroundLayer(mapView.layers.background);
-
-  const backgroundPanel = createBackgroundPanel({
-    onLoadFile: loadBackgroundFile,
-    onOpacity: (opacity) => {
-      if (!background) return;
-      background.opacity = opacity;
-      updateBackground();
-    },
-    onScalePercent: (percent) => {
-      if (!background || !canEditBackground(background)) return;
-      setScalePercent(background, percent);
-      updateBackground();
-    },
-    onPosition: (x, y) => {
-      if (!background || !canEditBackground(background)) return;
-      background.x = x;
-      background.y = y;
-      updateBackground();
-    },
-    onToggleMove: () => {
-      if (!background || !canEditBackground(background)) return;
-      // Transform works with the Pan tool, so drawing tools don't fight over the mouse.
-      if (!transformBackground) selectTool('pan');
-      setTransformBackground(!transformBackground);
-    },
-    onToggleLock: () => {
-      if (!background) return;
-      background.locked = !background.locked;
-      if (background.locked) setTransformBackground(false);
-      updateBackground();
-      sidebar.setStatus(background.locked ? 'Background locked' : 'Background unlocked');
-    },
-    onToggleVisible: () => {
-      if (!background) return;
-      background.visible = !background.visible;
-      if (!background.visible) setTransformBackground(false);
-      updateBackground();
-      sidebar.setStatus(background.visible ? 'Background shown' : 'Background hidden');
-    },
-    onFit: () => {
-      if (!background || !canEditBackground(background)) return;
-      fitBackground(background);
-      updateBackground();
-    },
-    onRemove: () => {
-      background = null;
-      setTransformBackground(false);
-      updateBackground();
-      sidebar.setStatus('Background removed');
-    },
-  });
-  sidebar.backgroundSlot.append(backgroundPanel.element);
-
-  transform = createBackgroundTransform({
-    svg: mapView.svg,
-    viewport,
-    overlay: mapView.layers.overlay,
-    getBackground: () => background,
-    isActive: () =>
-      transformBackground && background !== null && canEditBackground(background),
-    onChange: updateBackground,
-  });
-
-  attachFileDrop(mapView.element, '📂 Drop image to use as background', loadBackgroundFile);
-
-  function loadBackgroundFile(file: File): void {
-    loadImageFile(file)
-      .then((image) => {
-        background = createBackground(image);
-        setTransformBackground(false);
-        updateBackground();
-        sidebar.setStatus(`Background loaded: ${image.name}`);
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err);
-        backgroundPanel.showError(message);
-        sidebar.setStatus(message);
-      });
-  }
-
-  function updateBackground(): void {
-    backgroundLayer.render(background);
-    backgroundPanel.render(background, transformBackground);
-    transform?.render();
-  }
-
-  function setTransformBackground(on: boolean): void {
-    transformBackground = on;
-    viewport.refreshCursor();
-    updateBackground();
-  }
-
-  // ---------- Drawing ----------
+  // ---------- Drawing & layers ----------
 
   const drawing = createDrawing({
     mapView,
@@ -180,6 +82,104 @@ export function createLayout(root: HTMLElement): AppLayout {
     history,
     getActiveTool: () => activeTool,
   });
+
+  // ---------- Image layers ----------
+
+  /** The active layer, if it's an image layer. */
+  function activeImageLayer(): Layer | null {
+    const layer = drawing.layers.getActive();
+    return layer.kind === 'image' && layer.image ? layer : null;
+  }
+
+  /** The active layer's image, if it can be moved/resized (visible and unlocked). */
+  function editableImage(): BackgroundImage | null {
+    const layer = activeImageLayer();
+    return layer && isLayerEditable(layer) ? (layer.image ?? null) : null;
+  }
+
+  const imagePanel = createBackgroundPanel({
+    onLoadFile: loadImage,
+    onOpacity: (opacity) => {
+      const image = activeImageLayer()?.image;
+      if (!image) return;
+      image.opacity = opacity;
+      drawing.layers.notify();
+    },
+    onScalePercent: (percent) => {
+      const image = editableImage();
+      if (!image) return;
+      setScalePercent(image, percent);
+      drawing.layers.notify();
+    },
+    onPosition: (x, y) => {
+      const image = editableImage();
+      if (!image) return;
+      image.x = x;
+      image.y = y;
+      drawing.layers.notify();
+    },
+    onToggleMove: () => {
+      if (!editableImage()) return;
+      // Transform works with the Pan tool, so drawing tools don't fight over the mouse.
+      if (!transformMode) selectTool('pan');
+      setTransformMode(!transformMode);
+    },
+    onFit: () => {
+      const image = editableImage();
+      if (!image) return;
+      fitBackground(image);
+      drawing.layers.notify();
+    },
+    onRemove: () => {
+      const layer = activeImageLayer();
+      if (layer) drawing.deleteLayer(layer.id);
+    },
+  });
+  sidebar.backgroundSlot.append(imagePanel.element);
+
+  transform = createBackgroundTransform({
+    svg: mapView.svg,
+    viewport,
+    overlay: mapView.layers.overlay,
+    getBackground: editableImage,
+    isActive: () => transformMode && editableImage() !== null,
+    onChange: () => drawing.layers.notify(),
+  });
+
+  attachFileDrop(mapView.element, '📂 Drop image to add it as a layer', loadImage);
+
+  function loadImage(file: File): void {
+    loadImageFile(file)
+      .then((image) => {
+        const layer = drawing.addImageLayer(image);
+        sidebar.setStatus(`Image layer added: "${layer.name}"`);
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        imagePanel.showError(message);
+        sidebar.setStatus(message);
+      });
+  }
+
+  function updateImagePanel(): void {
+    // Leave Transform mode if the active layer is no longer an editable image.
+    if (transformMode && !editableImage()) {
+      transformMode = false;
+      viewport.refreshCursor();
+    }
+    const imageLayers = drawing.layers.all().filter((l) => l.kind === 'image').length;
+    imagePanel.render(activeImageLayer(), transformMode, imageLayers);
+    transform?.render();
+  }
+
+  function setTransformMode(on: boolean): void {
+    transformMode = on;
+    viewport.refreshCursor();
+    updateImagePanel();
+  }
+
+  drawing.layers.onChange(updateImagePanel);
+  updateImagePanel();
 
   // ---------- Undo / redo & shortcuts ----------
 
@@ -210,7 +210,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     toolbar.setActive(id);
     mapView.element.dataset.tool = id;
     drawing.onToolChange(id);
-    if (id !== 'pan') setTransformBackground(false);
+    if (id !== 'pan' && transformMode) setTransformMode(false);
     viewport.refreshCursor();
 
     const tool = TOOLS.find((t) => t.id === id);
