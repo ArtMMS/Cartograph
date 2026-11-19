@@ -138,12 +138,7 @@ body {
   cursor: grab;
 }
 
-.map-view.is-moving-bg .map-view__svg {
-  cursor: move;
-}
-
-.map-view.is-panning .map-view__svg,
-.map-view.is-moving-bg.is-panning .map-view__svg {
+.map-view.is-panning .map-view__svg {
   cursor: grabbing;
 }
 
@@ -152,6 +147,65 @@ body {
   stroke: var(--panel-border);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
+}
+
+/* ---------- Background transform (frame + handles) ---------- */
+
+.bg-transform__body {
+  fill: transparent;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+  pointer-events: all;
+  cursor: move;
+}
+
+.bg-transform__handle {
+  fill: var(--paper);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.bg-transform__handle--nw,
+.bg-transform__handle--se,
+.map-view__svg.is-resizing-nw,
+.map-view__svg.is-resizing-se {
+  cursor: nwse-resize !important;
+}
+
+.bg-transform__handle--ne,
+.bg-transform__handle--sw,
+.map-view__svg.is-resizing-ne,
+.map-view__svg.is-resizing-sw {
+  cursor: nesw-resize !important;
+}
+
+.map-view__svg.is-moving,
+.map-view__svg.is-moving .bg-transform__body {
+  cursor: move !important;
+}
+
+/* ---------- Drop zone ---------- */
+
+.drop-hint {
+  position: absolute;
+  inset: 12px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  color: var(--accent);
+  font-size: 18px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.map-view.is-drop-target .drop-hint {
+  display: flex;
 }
 
 /* ---------- Map HUD (zoom + center) ---------- */
@@ -389,6 +443,13 @@ body {
 
 .bg-panel__load {
   width: 100%;
+}
+
+.bg-panel__hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  text-align: center;
+  color: var(--muted);
 }
 
 .bg-panel__error {

@@ -1,12 +1,11 @@
 import {
   ACCEPTED_IMAGE_TYPES,
+  MAX_SCALE_PERCENT,
+  MIN_SCALE_PERCENT,
   canEditBackground,
   getScalePercent,
   type BackgroundImage,
 } from '../core/background';
-
-const MIN_SCALE_PERCENT = 10;
-const MAX_SCALE_PERCENT = 400;
 
 export interface BackgroundPanelHandlers {
   onLoadFile(file: File): void;
@@ -36,6 +35,7 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
   element.innerHTML = `
     <input class="bg-panel__file" type="file" accept="${ACCEPTED_IMAGE_TYPES.join(',')}" hidden />
     <button class="panel-button bg-panel__load" type="button">📂 Load image</button>
+    <p class="bg-panel__hint">or drag an image onto the map</p>
     <p class="bg-panel__error" hidden></p>
 
     <div class="bg-panel__controls" hidden>
@@ -71,7 +71,7 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
       </div>
 
       <div class="button-row">
-        <button class="panel-button bg-panel__move" type="button" title="Drag the image on the map">✥ Move</button>
+        <button class="panel-button bg-panel__move" type="button" title="Move and resize the image directly on the map">✥ Transform</button>
         <button class="panel-button bg-panel__fit" type="button" title="Fit the image to the world">Fit</button>
         <button class="panel-button panel-button--danger bg-panel__remove" type="button">Remove</button>
       </div>

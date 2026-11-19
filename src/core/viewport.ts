@@ -12,8 +12,12 @@ export interface ViewportOptions {
   svg: SVGSVGElement;
   /** Element that receives the cursor classes (can-pan / is-panning). */
   container: HTMLElement;
-  /** Returns true when a left-button drag should pan (e.g. Pan tool active). */
-  canPanWithLeftButton: () => boolean;
+  /**
+   * Returns true when a left-button drag should pan (e.g. Pan tool active).
+   * Receives the pointer event when called on mouse down (so it can check
+   * what is under the cursor); called without it when updating the cursor.
+   */
+  canPanWithLeftButton: (e?: PointerEvent) => boolean;
   /** Called whenever the zoom or position changes. */
   onChange?: (scale: number) => void;
 }
@@ -169,7 +173,7 @@ export class Viewport {
   private handlePointerDown = (e: PointerEvent): void => {
     const isMiddle = e.button === 1;
     const isLeftPan =
-      e.button === 0 && (this.spaceDown || this.options.canPanWithLeftButton());
+      e.button === 0 && (this.spaceDown || this.options.canPanWithLeftButton(e));
     if (!isMiddle && !isLeftPan) return;
 
     e.preventDefault();

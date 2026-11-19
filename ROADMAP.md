@@ -19,6 +19,7 @@ Fase 2 — Imagem de fundo
 [x] Mostrar/ocultar a imagem de fundo
 
 Fase 3 — Desenho
+[ ] Fix: Dark Mode faz o canva continuar em branco
 [ ] Ferramenta de traço livre (lápis) com perfect-freehand
 [ ] Escolher cor e espessura do traço
 [ ] Paleta de cores predefinidas com elementos simples (costa, montanha, floresta, rio, lago, deserto, fronteira)
@@ -27,6 +28,7 @@ Fase 3 — Desenho
 [ ] Atalhos de teclado para as ferramentas
 
 Fase 4 — Camadas
+[ ] Camada Principal (alterar cor)
 [ ] Criar, renomear e excluir camadas (ex.: Costa, Rios, Relevo, Fronteiras)
 [ ] Mostrar/ocultar camada
 [ ] Travar camada (não editável)
@@ -34,6 +36,10 @@ Fase 4 — Camadas
 [ ] Desenhar sempre na camada ativa
 
 Fase 5 — Salvar e abrir
+[ ] Predefinições de Tamanho de Hexcrawl
+    - Continent
+    - Kingdom
+    - Town
 [ ] Definir formato do arquivo (MapFile em JSON, com versão)
 [ ] Salvar em arquivo (File System Access API)
 [ ] "Salvar" sobrescreve o arquivo aberto; "Salvar como" cria outro

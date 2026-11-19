@@ -2,6 +2,10 @@ import { WORLD_HEIGHT, WORLD_WIDTH } from './world';
 
 export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
+/** Scale limits, in % (100% = image fitted to the world). */
+export const MIN_SCALE_PERCENT = 10;
+export const MAX_SCALE_PERCENT = 400;
+
 export interface BackgroundImage {
   /** File name, just for display. */
   name: string;
@@ -92,12 +96,20 @@ export function getScalePercent(bg: BackgroundImage): number {
   return (bg.scale / getFitScale(bg.naturalWidth, bg.naturalHeight)) * 100;
 }
 
+/** Keeps a scale (world units per pixel) inside the allowed % limits. */
+export function clampScale(bg: BackgroundImage, scale: number): number {
+  const fit = getFitScale(bg.naturalWidth, bg.naturalHeight);
+  const min = (fit * MIN_SCALE_PERCENT) / 100;
+  const max = (fit * MAX_SCALE_PERCENT) / 100;
+  return Math.min(max, Math.max(min, scale));
+}
+
 /** Changes the scale (in %, 100% = fitted) keeping the image center in place. */
 export function setScalePercent(bg: BackgroundImage, percent: number): void {
   const centerX = bg.x + (bg.naturalWidth * bg.scale) / 2;
   const centerY = bg.y + (bg.naturalHeight * bg.scale) / 2;
 
-  bg.scale = (getFitScale(bg.naturalWidth, bg.naturalHeight) * percent) / 100;
+  bg.scale = clampScale(bg, (getFitScale(bg.naturalWidth, bg.naturalHeight) * percent) / 100);
   bg.x = centerX - (bg.naturalWidth * bg.scale) / 2;
   bg.y = centerY - (bg.naturalHeight * bg.scale) / 2;
 }

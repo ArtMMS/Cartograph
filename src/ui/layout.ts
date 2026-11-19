@@ -8,10 +8,14 @@ import {
 } from '../core/background';
 import { applyTheme, loadTheme, type Theme } from '../core/theme';
 import { Viewport } from '../core/viewport';
-import { attachBackgroundMove } from '../tools/background-move';
+import {
+  createBackgroundTransform,
+  type BackgroundTransform,
+} from '../tools/background-transform';
 import { TOOLS, type ToolId } from '../tools/tool-ids';
 import { createBackgroundLayer } from './background-layer';
 import { createBackgroundPanel } from './background-panel';
+import { attachFileDrop } from './drop-zone';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
 import { createToolbar, type Toolbar } from './toolbar';
@@ -31,7 +35,8 @@ export function createLayout(root: HTMLElement): AppLayout {
   let theme: Theme = loadTheme();
   let hexMode = false;
   let background: BackgroundImage | null = null;
-  let moveBackground = false;
+  let transformBackground = false;
+  let transform: BackgroundTransform | null = null;
 
   const sidebar = createSidebar();
   const mapView = createMapView();
@@ -47,10 +52,17 @@ export function createLayout(root: HTMLElement): AppLayout {
   const viewport = new Viewport({
     svg: mapView.svg,
     container: mapView.element,
-    canPanWithLeftButton: () => activeTool === 'pan' && !moveBackground,
+    canPanWithLeftButton: (e) => {
+      if (activeTool !== 'pan') return false;
+      // In Transform mode, dragging the image (or its handles) edits it
+      // instead of panning; dragging anywhere else still pans.
+      if (e && transform?.hitTest(e)) return false;
+      return true;
+    },
     onChange: (scale) => {
       mapView.setZoomLabel(scale);
       mapView.hexGrid.setScale(scale);
+      transform?.render();
     },
   });
 
@@ -65,17 +77,7 @@ export function createLayout(root: HTMLElement): AppLayout {
   const backgroundLayer = createBackgroundLayer(mapView.layers.background);
 
   const backgroundPanel = createBackgroundPanel({
-    onLoadFile: (file) => {
-      loadImageFile(file)
-        .then((image) => {
-          background = createBackground(image);
-          updateBackground();
-          sidebar.setStatus(`Background loaded: ${image.name}`);
-        })
-        .catch((err: unknown) => {
-          backgroundPanel.showError(err instanceof Error ? err.message : String(err));
-        });
-    },
+    onLoadFile: loadBackgroundFile,
     onOpacity: (opacity) => {
       if (!background) return;
       background.opacity = opacity;
@@ -94,19 +96,19 @@ export function createLayout(root: HTMLElement): AppLayout {
     },
     onToggleMove: () => {
       if (!background || !canEditBackground(background)) return;
-      setMoveBackground(!moveBackground);
+      setTransformBackground(!transformBackground);
     },
     onToggleLock: () => {
       if (!background) return;
       background.locked = !background.locked;
-      if (background.locked) setMoveBackground(false);
+      if (background.locked) setTransformBackground(false);
       updateBackground();
       sidebar.setStatus(background.locked ? 'Background locked' : 'Background unlocked');
     },
     onToggleVisible: () => {
       if (!background) return;
       background.visible = !background.visible;
-      if (!background.visible) setMoveBackground(false);
+      if (!background.visible) setTransformBackground(false);
       updateBackground();
       sidebar.setStatus(background.visible ? 'Background shown' : 'Background hidden');
     },
@@ -117,33 +119,48 @@ export function createLayout(root: HTMLElement): AppLayout {
     },
     onRemove: () => {
       background = null;
-      setMoveBackground(false);
+      setTransformBackground(false);
       updateBackground();
       sidebar.setStatus('Background removed');
     },
   });
   sidebar.backgroundSlot.append(backgroundPanel.element);
 
-  attachBackgroundMove({
+  transform = createBackgroundTransform({
     svg: mapView.svg,
     viewport,
-    isActive: () => moveBackground && background !== null && canEditBackground(background),
-    onDrag: (dx, dy) => {
-      if (!background) return;
-      background.x += dx;
-      background.y += dy;
-      updateBackground();
-    },
+    overlay: mapView.layers.overlay,
+    getBackground: () => background,
+    isActive: () =>
+      transformBackground && background !== null && canEditBackground(background),
+    onChange: updateBackground,
   });
+
+  attachFileDrop(mapView.element, '📂 Drop image to use as background', loadBackgroundFile);
+
+  function loadBackgroundFile(file: File): void {
+    loadImageFile(file)
+      .then((image) => {
+        background = createBackground(image);
+        setTransformBackground(false);
+        updateBackground();
+        sidebar.setStatus(`Background loaded: ${image.name}`);
+      })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        backgroundPanel.showError(message);
+        sidebar.setStatus(message);
+      });
+  }
 
   function updateBackground(): void {
     backgroundLayer.render(background);
-    backgroundPanel.render(background, moveBackground);
+    backgroundPanel.render(background, transformBackground);
+    transform?.render();
   }
 
-  function setMoveBackground(on: boolean): void {
-    moveBackground = on;
-    mapView.element.classList.toggle('is-moving-bg', on);
+  function setTransformBackground(on: boolean): void {
+    transformBackground = on;
     viewport.refreshCursor();
     updateBackground();
   }
