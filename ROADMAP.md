@@ -5,9 +5,11 @@ Fase 1 — Base do projeto
 [x] Criar projeto com Vite + TypeScript
 [x] Estrutura de pastas inicial (src/, src/core/, src/tools/, src/ui/)
 [x] Layout da tela: barra de ferramentas, área do mapa (SVG) e painel lateral
-[ ] Zoom com a roda do mouse (centrado no cursor)
-[ ] Arrastar o mapa (pan) com botão do meio ou espaço + arrastar
-[ ] Botão "Centralizar mapa"
+[x] Zoom com a roda do mouse (centrado no cursor)
+[x] Arrastar o mapa (pan) com botão do meio ou espaço + arrastar
+[x] Botão "Centralizar mapa"
+[ ] Light/Dark Mode + Button (Light = ☀️ | Dark = 🌕)
+[ ] Hexcrawl mode (Size Comparison of Europe)
 
 Fase 2 — Imagem de fundo
 [ ] Carregar imagem de fundo (PNG/JPG/WEBP) do PC

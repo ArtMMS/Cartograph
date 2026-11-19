@@ -1,8 +1,5 @@
 import { createSvg } from '../core/svg';
-
-/** Size of the map "world" in SVG units. */
-export const WORLD_WIDTH = 2000;
-export const WORLD_HEIGHT = 1500;
+import { WORLD_HEIGHT, WORLD_WIDTH } from '../core/world';
 
 export interface MapView {
   element: HTMLElement;
@@ -15,6 +12,10 @@ export interface MapView {
     markers: SVGGElement;
     overlay: SVGGElement;
   };
+  /** "Center map" button in the bottom-right corner. */
+  centerButton: HTMLButtonElement;
+  /** Updates the zoom percentage shown in the corner (1 = 100%). */
+  setZoomLabel(scale: number): void;
 }
 
 export function createMapView(): MapView {
@@ -24,7 +25,7 @@ export function createMapView(): MapView {
   const svg = createSvg('svg', {
     class: 'map-view__svg',
     viewBox: `0 0 ${WORLD_WIDTH} ${WORLD_HEIGHT}`,
-    preserveAspectRatio: 'xMidYMid meet',
+    preserveAspectRatio: 'xMinYMin meet',
   });
 
   // Paper: the drawable area of the world.
@@ -52,7 +53,27 @@ export function createMapView(): MapView {
     layers.markers,
     layers.overlay,
   );
-  element.append(svg);
 
-  return { element, svg, layers };
+  // HUD: zoom level + center button.
+  const hud = document.createElement('div');
+  hud.className = 'map-hud';
+
+  const zoomLabel = document.createElement('span');
+  zoomLabel.className = 'map-hud__zoom';
+  zoomLabel.textContent = '100%';
+
+  const centerButton = document.createElement('button');
+  centerButton.type = 'button';
+  centerButton.className = 'map-hud__button';
+  centerButton.title = 'Center map';
+  centerButton.textContent = '⌖ Center';
+
+  hud.append(zoomLabel, centerButton);
+  element.append(svg, hud);
+
+  function setZoomLabel(scale: number): void {
+    zoomLabel.textContent = `${Math.round(scale * 100)}%`;
+  }
+
+  return { element, svg, layers, centerButton, setZoomLabel };
 }
