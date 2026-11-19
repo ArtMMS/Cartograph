@@ -1,7 +1,11 @@
 export interface Sidebar {
   element: HTMLElement;
+  /** Container for the brush (pencil) controls. */
+  brushSlot: HTMLElement;
   /** Container for the background image controls. */
   backgroundSlot: HTMLElement;
+  /** Shows/hides the Brush section (only useful with drawing tools). */
+  setBrushVisible(visible: boolean): void;
   /** Shows a message in the status line at the bottom of the sidebar. */
   setStatus(text: string): void;
 }
@@ -9,6 +13,8 @@ export interface Sidebar {
 export function createSidebar(): Sidebar {
   const element = document.createElement('aside');
   element.className = 'sidebar';
+
+  const brush = createSection('Brush');
 
   const layers = createSection('Layers');
   layers.body.innerHTML = '<p class="sidebar__empty">No layers yet.</p>';
@@ -23,13 +29,23 @@ export function createSidebar(): Sidebar {
   const status = document.createElement('footer');
   status.className = 'sidebar__status';
 
-  element.append(layers.section, background.section, details.section, status);
+  element.append(brush.section, layers.section, background.section, details.section, status);
+
+  function setBrushVisible(visible: boolean): void {
+    brush.section.hidden = !visible;
+  }
 
   function setStatus(text: string): void {
     status.textContent = text;
   }
 
-  return { element, backgroundSlot: background.body, setStatus };
+  return {
+    element,
+    brushSlot: brush.body,
+    backgroundSlot: background.body,
+    setBrushVisible,
+    setStatus,
+  };
 }
 
 function createSection(title: string): { section: HTMLElement; body: HTMLElement } {

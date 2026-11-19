@@ -19,16 +19,17 @@ Fase 2 — Imagem de fundo
 [x] Mostrar/ocultar a imagem de fundo
 
 Fase 3 — Desenho
-[ ] Fix: Dark Mode faz o canva continuar em branco
-[ ] Ferramenta de traço livre (lápis) com perfect-freehand
+[x] Fix: Dark Mode faz o canva continuar em branco
+[x] Ferramenta de traço livre (lápis) com perfect-freehand
 [ ] Escolher cor e espessura do traço
 [ ] Paleta de cores predefinidas com elementos simples (costa, montanha, floresta, rio, lago, deserto, fronteira)
 [ ] Ferramenta de seleção (clicar em um traço para selecionar)
 [ ] Apagar traço selecionado / borracha
 [ ] Atalhos de teclado para as ferramentas
+[ ] CTRL + Z
 
 Fase 4 — Camadas
-[ ] Camada Principal (alterar cor)
+[ ] Camada Base [sempre vai começar com ela] (alterar cor)
 [ ] Criar, renomear e excluir camadas (ex.: Costa, Rios, Relevo, Fronteiras)
 [ ] Mostrar/ocultar camada
 [ ] Travar camada (não editável)
@@ -36,7 +37,8 @@ Fase 4 — Camadas
 [ ] Desenhar sempre na camada ativa
 
 Fase 5 — Salvar e abrir
-[ ] Predefinições de Tamanho de Hexcrawl
+[ ] Menu inicial ao abrir: "criar novo" ou "carregar arquivo"
+[ ] Predefinições de Tamanho de Hexcrawl [ao apertar em criar novo]
     - Continent
     - Kingdom
     - Town
@@ -81,5 +83,6 @@ Fase 9 — Extras
 [ ] Rosa dos ventos e escala no canto do mapa
 [ ] Modo "visualização" (só navegar e ler notas, sem editar)
 
-eias futuras
+Ideias futuras
 [ ] Múltiplos mapas ligados (clicar em uma cidade abre o mapa dela)
+[ ] Gerar terreno automaticamente

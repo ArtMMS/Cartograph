@@ -7,17 +7,21 @@ import {
   type BackgroundImage,
 } from '../core/background';
 import { applyTheme, loadTheme, type Theme } from '../core/theme';
+import { createDefaultBrush, type Brush, type Stroke } from '../core/stroke';
 import { Viewport } from '../core/viewport';
 import {
   createBackgroundTransform,
   type BackgroundTransform,
 } from '../tools/background-transform';
+import { attachPencil } from '../tools/pencil';
 import { TOOLS, type ToolId } from '../tools/tool-ids';
 import { createBackgroundLayer } from './background-layer';
 import { createBackgroundPanel } from './background-panel';
+import { createBrushPanel } from './brush-panel';
 import { attachFileDrop } from './drop-zone';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
+import { createStrokeLayer } from './stroke-layer';
 import { createToolbar, type Toolbar } from './toolbar';
 
 export interface AppLayout {
@@ -37,6 +41,8 @@ export function createLayout(root: HTMLElement): AppLayout {
   let background: BackgroundImage | null = null;
   let transformBackground = false;
   let transform: BackgroundTransform | null = null;
+  const brush: Brush = createDefaultBrush(theme === 'dark');
+  const strokes: Stroke[] = [];
 
   const sidebar = createSidebar();
   const mapView = createMapView();
@@ -96,6 +102,8 @@ export function createLayout(root: HTMLElement): AppLayout {
     },
     onToggleMove: () => {
       if (!background || !canEditBackground(background)) return;
+      // Transform works with the Pan tool, so drawing tools don't fight over the mouse.
+      if (!transformBackground) selectTool('pan');
       setTransformBackground(!transformBackground);
     },
     onToggleLock: () => {
@@ -165,11 +173,44 @@ export function createLayout(root: HTMLElement): AppLayout {
     updateBackground();
   }
 
+  // ---------- Drawing ----------
+
+  const strokeLayer = createStrokeLayer(mapView.layers.drawing);
+
+  const brushPanel = createBrushPanel({
+    onColor: (color) => {
+      brush.color = color;
+      brushPanel.render(brush);
+    },
+    onSize: (size) => {
+      brush.size = size;
+      brushPanel.render(brush);
+    },
+  });
+  sidebar.brushSlot.append(brushPanel.element);
+  brushPanel.render(brush);
+
+  attachPencil({
+    svg: mapView.svg,
+    viewport,
+    isActive: () => activeTool === 'pencil',
+    getBrush: () => brush,
+    onPreview: (stroke) => strokeLayer.setPreview(stroke),
+    onCommit: (stroke) => {
+      strokes.push(stroke);
+      strokeLayer.add(stroke);
+      sidebar.setStatus(`Strokes: ${strokes.length}`);
+    },
+  });
+
   // ---------- Tools & theme ----------
 
   function selectTool(id: ToolId): void {
     activeTool = id;
     toolbar.setActive(id);
+    mapView.element.dataset.tool = id;
+    sidebar.setBrushVisible(id === 'pencil');
+    if (id !== 'pan') setTransformBackground(false);
     viewport.refreshCursor();
 
     const tool = TOOLS.find((t) => t.id === id);

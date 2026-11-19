@@ -138,6 +138,10 @@ body {
   cursor: grab;
 }
 
+.map-view[data-tool='pencil'] .map-view__svg {
+  cursor: crosshair;
+}
+
 .map-view.is-panning .map-view__svg {
   cursor: grabbing;
 }
@@ -147,6 +151,16 @@ body {
   stroke: var(--panel-border);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
+}
+
+/* ---------- Strokes ---------- */
+
+.stroke {
+  stroke: none;
+}
+
+.stroke--preview {
+  pointer-events: none;
 }
 
 /* ---------- Background transform (frame + handles) ---------- */
@@ -437,6 +451,46 @@ body {
 
 .field__inline .field__number {
   flex: 1;
+}
+
+/* ---------- Brush panel ---------- */
+
+.sidebar__section[hidden] {
+  display: none;
+}
+
+.brush-panel__color {
+  width: 36px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+
+.brush-panel__hex {
+  flex: 1;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.brush-panel__preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding-left: 60px;
+}
+
+.brush-panel__dot {
+  display: inline-block;
+  border-radius: 50%;
+  border: 1px solid var(--panel-border);
+}
+
+.brush-panel__km {
+  font-size: 11px;
+  color: var(--muted);
 }
 
 /* ---------- Background panel ---------- */
