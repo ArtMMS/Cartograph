@@ -22,8 +22,9 @@ export interface Brush {
 export const MIN_BRUSH_SIZE = 1;
 export const MAX_BRUSH_SIZE = 40;
 
-export function createDefaultBrush(dark: boolean): Brush {
-  return { color: dark ? '#e8e4da' : '#2a2a2a', size: 6 };
+/** The map paper is always white, so the default ink is always dark. */
+export function createDefaultBrush(): Brush {
+  return { color: '#2a2a2a', size: 6 };
 }
 
 export function createStroke(brush: Brush, simulatePressure: boolean): Stroke {

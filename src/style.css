@@ -10,6 +10,10 @@
   --accent: #2f7d4f;
   --accent-soft: #d8eadf;
   --hover: #ece6d9;
+
+  /* Map canvas: always light, in both themes (like paper). */
+  --canvas-paper: #ffffff;
+  --canvas-border: #d4ccba;
   --grid: rgba(60, 50, 30, 0.35);
 
   --toolbar-width: 84px;
@@ -28,7 +32,6 @@
   --accent: #5fbf85;
   --accent-soft: #24392c;
   --hover: #2b2e34;
-  --grid: rgba(230, 225, 210, 0.22);
 }
 
 *,
@@ -142,13 +145,17 @@ body {
   cursor: crosshair;
 }
 
+.map-view[data-tool='eraser'] .map-view__svg {
+  cursor: cell;
+}
+
 .map-view.is-panning .map-view__svg {
   cursor: grabbing;
 }
 
 .map-view__paper {
-  fill: var(--paper);
-  stroke: var(--panel-border);
+  fill: var(--canvas-paper);
+  stroke: var(--canvas-border);
   stroke-width: 2;
   vector-effect: non-scaling-stroke;
 }
@@ -161,6 +168,14 @@ body {
 
 .stroke--preview {
   pointer-events: none;
+}
+
+.stroke.is-selected {
+  stroke: #2f80ed;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  paint-order: stroke;
 }
 
 /* ---------- Background transform (frame + handles) ---------- */
@@ -176,7 +191,7 @@ body {
 }
 
 .bg-transform__handle {
-  fill: var(--paper);
+  fill: var(--canvas-paper);
   stroke: var(--accent);
   stroke-width: 1.5;
   vector-effect: non-scaling-stroke;
@@ -491,6 +506,52 @@ body {
 .brush-panel__km {
   font-size: 11px;
   color: var(--muted);
+}
+
+/* ---------- Palette ---------- */
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.palette__swatch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.palette__swatch:hover {
+  border-color: var(--accent);
+}
+
+.palette__swatch.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.palette__color {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.selection-delete {
+  width: 100%;
+  margin-top: 4px;
 }
 
 /* ---------- Background panel ---------- */

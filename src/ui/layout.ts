@@ -7,21 +7,20 @@ import {
   type BackgroundImage,
 } from '../core/background';
 import { applyTheme, loadTheme, type Theme } from '../core/theme';
-import { createDefaultBrush, type Brush, type Stroke } from '../core/stroke';
+import { History } from '../core/history';
 import { Viewport } from '../core/viewport';
 import {
   createBackgroundTransform,
   type BackgroundTransform,
 } from '../tools/background-transform';
-import { attachPencil } from '../tools/pencil';
+import { attachShortcuts } from '../tools/shortcuts';
 import { TOOLS, type ToolId } from '../tools/tool-ids';
 import { createBackgroundLayer } from './background-layer';
 import { createBackgroundPanel } from './background-panel';
-import { createBrushPanel } from './brush-panel';
+import { createDrawing } from './drawing';
 import { attachFileDrop } from './drop-zone';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
-import { createStrokeLayer } from './stroke-layer';
 import { createToolbar, type Toolbar } from './toolbar';
 
 export interface AppLayout {
@@ -41,8 +40,7 @@ export function createLayout(root: HTMLElement): AppLayout {
   let background: BackgroundImage | null = null;
   let transformBackground = false;
   let transform: BackgroundTransform | null = null;
-  const brush: Brush = createDefaultBrush(theme === 'dark');
-  const strokes: Stroke[] = [];
+  const history = new History();
 
   const sidebar = createSidebar();
   const mapView = createMapView();
@@ -175,32 +173,34 @@ export function createLayout(root: HTMLElement): AppLayout {
 
   // ---------- Drawing ----------
 
-  const strokeLayer = createStrokeLayer(mapView.layers.drawing);
-
-  const brushPanel = createBrushPanel({
-    onColor: (color) => {
-      brush.color = color;
-      brushPanel.render(brush);
-    },
-    onSize: (size) => {
-      brush.size = size;
-      brushPanel.render(brush);
-    },
-  });
-  sidebar.brushSlot.append(brushPanel.element);
-  brushPanel.render(brush);
-
-  attachPencil({
-    svg: mapView.svg,
+  const drawing = createDrawing({
+    mapView,
     viewport,
-    isActive: () => activeTool === 'pencil',
-    getBrush: () => brush,
-    onPreview: (stroke) => strokeLayer.setPreview(stroke),
-    onCommit: (stroke) => {
-      strokes.push(stroke);
-      strokeLayer.add(stroke);
-      sidebar.setStatus(`Strokes: ${strokes.length}`);
-    },
+    sidebar,
+    history,
+    getActiveTool: () => activeTool,
+  });
+
+  // ---------- Undo / redo & shortcuts ----------
+
+  function undo(): void {
+    const command = history.undo();
+    drawing.refreshSelection();
+    sidebar.setStatus(command ? `Undo: ${command.label}` : 'Nothing to undo');
+  }
+
+  function redo(): void {
+    const command = history.redo();
+    drawing.refreshSelection();
+    sidebar.setStatus(command ? `Redo: ${command.label}` : 'Nothing to redo');
+  }
+
+  attachShortcuts({
+    onTool: selectTool,
+    onUndo: undo,
+    onRedo: redo,
+    onDelete: () => drawing.deleteSelection(),
+    onEscape: () => drawing.clearSelection(),
   });
 
   // ---------- Tools & theme ----------
@@ -209,7 +209,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     activeTool = id;
     toolbar.setActive(id);
     mapView.element.dataset.tool = id;
-    sidebar.setBrushVisible(id === 'pencil');
+    drawing.onToolChange(id);
     if (id !== 'pan') setTransformBackground(false);
     viewport.refreshCursor();
 

@@ -2,10 +2,14 @@ export interface Sidebar {
   element: HTMLElement;
   /** Container for the brush (pencil) controls. */
   brushSlot: HTMLElement;
+  /** Container for the selected stroke controls. */
+  selectionSlot: HTMLElement;
   /** Container for the background image controls. */
   backgroundSlot: HTMLElement;
-  /** Shows/hides the Brush section (only useful with drawing tools). */
+  /** Shows/hides the Brush section (only useful with the Pencil). */
   setBrushVisible(visible: boolean): void;
+  /** Shows/hides the Selected stroke section. */
+  setSelectionVisible(visible: boolean): void;
   /** Shows a message in the status line at the bottom of the sidebar. */
   setStatus(text: string): void;
 }
@@ -15,6 +19,7 @@ export function createSidebar(): Sidebar {
   element.className = 'sidebar';
 
   const brush = createSection('Brush');
+  const selection = createSection('Selected stroke');
 
   const layers = createSection('Layers');
   layers.body.innerHTML = '<p class="sidebar__empty">No layers yet.</p>';
@@ -29,21 +34,36 @@ export function createSidebar(): Sidebar {
   const status = document.createElement('footer');
   status.className = 'sidebar__status';
 
-  element.append(brush.section, layers.section, background.section, details.section, status);
+  element.append(
+    brush.section,
+    selection.section,
+    layers.section,
+    background.section,
+    details.section,
+    status,
+  );
 
   function setBrushVisible(visible: boolean): void {
     brush.section.hidden = !visible;
+  }
+
+  function setSelectionVisible(visible: boolean): void {
+    selection.section.hidden = !visible;
   }
 
   function setStatus(text: string): void {
     status.textContent = text;
   }
 
+  setSelectionVisible(false);
+
   return {
     element,
     brushSlot: brush.body,
+    selectionSlot: selection.body,
     backgroundSlot: background.body,
     setBrushVisible,
+    setSelectionVisible,
     setStatus,
   };
 }

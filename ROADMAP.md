@@ -21,12 +21,12 @@ Fase 2 — Imagem de fundo
 Fase 3 — Desenho
 [x] Fix: Dark Mode faz o canva continuar em branco
 [x] Ferramenta de traço livre (lápis) com perfect-freehand
-[ ] Escolher cor e espessura do traço
-[ ] Paleta de cores predefinidas com elementos simples (costa, montanha, floresta, rio, lago, deserto, fronteira)
-[ ] Ferramenta de seleção (clicar em um traço para selecionar)
-[ ] Apagar traço selecionado / borracha
-[ ] Atalhos de teclado para as ferramentas
-[ ] CTRL + Z
+[x] Escolher cor e espessura do traço
+[x] Paleta de cores predefinidas com elementos simples (costa, montanha, floresta, rio, lago, deserto, fronteira)
+[x] Ferramenta de seleção (clicar em um traço para selecionar)
+[x] Apagar traço selecionado / borracha
+[x] Atalhos de teclado para as ferramentas
+[x] CTRL + Z
 
 Fase 4 — Camadas
 [ ] Camada Base [sempre vai começar com ela] (alterar cor)
