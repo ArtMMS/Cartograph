@@ -8,6 +8,7 @@ import {
   type Layer,
 } from '../core/layer';
 import { LayerStore, type LayerPatch } from '../core/layer-store';
+import { mapScale } from '../core/map-scale';
 import type { PalettePreset } from '../core/palette';
 import { createDefaultBrush, type Brush, type Stroke } from '../core/stroke';
 import { StrokeStore, type RemovedStroke, type StrokePatch } from '../core/stroke-store';
@@ -40,6 +41,8 @@ export interface Drawing {
   addImageLayer(image: LoadedImage): Layer;
   /** Deletes a layer and its strokes (undoable). */
   deleteLayer(id: string): void;
+  /** Replaces everything (opening a file or starting a new map). */
+  loadState(layers: Layer[], strokes: Stroke[], activeLayerId: string): void;
   /** Call when the active tool changes. */
   onToolChange(id: ToolId): void;
   deleteSelection(): void;
@@ -413,6 +416,19 @@ export function createDrawing(options: DrawingOptions): Drawing {
     },
   });
 
+  function loadState(newLayers: Layer[], newStrokes: Stroke[], activeLayerId: string): void {
+    select(null);
+    layer.setPreview(null);
+    layers.replaceAll(newLayers, activeLayerId);
+    strokes.replaceAll(newStrokes);
+  }
+
+  // The brush "≈ km wide" label depends on the map scale.
+  mapScale.onChange(() => {
+    brushPanel.render(brush);
+    renderSelectionPanel();
+  });
+
   function onToolChange(id: ToolId): void {
     sidebar.setBrushVisible(id === 'pencil');
     if (id !== 'select') select(null);
@@ -423,6 +439,7 @@ export function createDrawing(options: DrawingOptions): Drawing {
     layers,
     addImageLayer,
     deleteLayer,
+    loadState,
     onToolChange,
     deleteSelection,
     clearSelection: () => select(null),

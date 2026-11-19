@@ -1,6 +1,6 @@
 import { PALETTE, type PalettePreset } from '../core/palette';
 import { MAX_BRUSH_SIZE, MIN_BRUSH_SIZE, type Brush } from '../core/stroke';
-import { KM_PER_UNIT } from '../core/world';
+import { formatDistance, mapScale } from '../core/map-scale';
 
 export interface BrushPanelHandlers {
   onColor(color: string): void;
@@ -102,7 +102,7 @@ export function createBrushPanel(handlers: BrushPanelHandlers): BrushPanel {
     dot.style.width = `${px}px`;
     dot.style.height = `${px}px`;
     dot.style.background = brush.color;
-    km.textContent = `≈ ${brush.size * KM_PER_UNIT} km wide`;
+    km.textContent = `≈ ${formatDistance(brush.size * mapScale.kmPerUnit)} wide`;
 
     // Highlight the preset that matches the current color.
     for (const preset of PALETTE) {

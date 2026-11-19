@@ -15,6 +15,8 @@ export class LayerStore {
   private layers: Layer[] = [createBaseLayer()];
   private activeId = BASE_LAYER_ID;
   private readonly listeners = new Set<() => void>();
+  /** Increases on every content change — not when only the active layer changes. */
+  revision = 0;
 
   all(): readonly Layer[] {
     return this.layers;
@@ -35,7 +37,7 @@ export class LayerStore {
   setActive(id: string): void {
     if (!this.get(id) || id === this.activeId) return;
     this.activeId = id;
-    this.emit();
+    this.emit(false);
   }
 
   /** Inserts a layer at `index` (default: on top). The Base layer always stays at 0. */
@@ -82,11 +84,21 @@ export class LayerStore {
     this.emit();
   }
 
+  /** Replaces all layers (e.g. when opening a file). The Base layer is added if missing. */
+  replaceAll(layers: Layer[], activeId: string): void {
+    const list = layers.filter((l) => l.id !== BASE_LAYER_ID);
+    const base = layers.find((l) => l.id === BASE_LAYER_ID) ?? createBaseLayer();
+    this.layers = [base, ...list];
+    this.activeId = this.get(activeId) ? activeId : BASE_LAYER_ID;
+    this.emit();
+  }
+
   onChange(listener: () => void): void {
     this.listeners.add(listener);
   }
 
-  private emit(): void {
+  private emit(contentChanged = true): void {
+    if (contentChanged) this.revision++;
     for (const listener of this.listeners) listener();
   }
 }

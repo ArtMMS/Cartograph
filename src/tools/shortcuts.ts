@@ -6,6 +6,9 @@ export interface ShortcutHandlers {
   onRedo: () => void;
   onDelete: () => void;
   onEscape: () => void;
+  onSave: () => void;
+  onSaveAs: () => void;
+  onOpen: () => void;
 }
 
 /**
@@ -14,12 +17,26 @@ export interface ShortcutHandlers {
  * - Ctrl+Z undo, Ctrl+Y / Ctrl+Shift+Z redo
  * - Delete / Backspace: delete selection
  * - Esc: clear selection
+ * - Ctrl+S save, Ctrl+Shift+S save as, Ctrl+O open
  */
 export function attachShortcuts(handlers: ShortcutHandlers): void {
   window.addEventListener('keydown', (e) => {
-    if (isTypingTarget(e.target)) return;
-
     const key = e.key.toLowerCase();
+
+    // File shortcuts work even while typing in a field.
+    if ((e.ctrlKey || e.metaKey) && key === 's') {
+      e.preventDefault();
+      if (e.shiftKey) handlers.onSaveAs();
+      else handlers.onSave();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && key === 'o') {
+      e.preventDefault();
+      handlers.onOpen();
+      return;
+    }
+
+    if (isTypingTarget(e.target)) return;
 
     if (e.ctrlKey || e.metaKey) {
       if (key === 'z' && !e.shiftKey) {

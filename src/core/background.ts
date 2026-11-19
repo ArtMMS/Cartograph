@@ -24,6 +24,19 @@ export interface BackgroundImage {
   opacity: number;
 }
 
+/** Checks that a value (e.g. from a map file) looks like a valid image. */
+export function isImageFile(value: unknown): value is BackgroundImage {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.src === 'string' &&
+    typeof v.name === 'string' &&
+    ['naturalWidth', 'naturalHeight', 'x', 'y', 'scale', 'opacity'].every(
+      (key) => typeof v[key] === 'number',
+    )
+  );
+}
+
 export interface LoadedImage {
   name: string;
   src: string;

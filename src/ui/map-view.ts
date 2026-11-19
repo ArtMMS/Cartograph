@@ -1,5 +1,6 @@
 import { createSvg } from '../core/svg';
-import { HEX_SIZE_KM, WORLD_HEIGHT, WORLD_WIDTH } from '../core/world';
+import { SCALE_PRESETS, formatDistance, mapScale, type ScalePresetId } from '../core/map-scale';
+import { WORLD_HEIGHT, WORLD_WIDTH } from '../core/world';
 import { createHexGrid, type HexGrid } from './hex-grid';
 
 export interface MapView {
@@ -16,6 +17,8 @@ export interface MapView {
   hexGrid: HexGrid;
   /** "Hex" toggle button in the HUD. */
   hexButton: HTMLButtonElement;
+  /** Map size preset (Continent / Kingdom / Town) in the HUD. */
+  presetSelect: HTMLSelectElement;
   /** "Center map" button in the HUD. */
   centerButton: HTMLButtonElement;
   /** Updates the zoom percentage shown in the HUD (1 = 100%). */
@@ -24,6 +27,8 @@ export interface MapView {
   setHexMode(on: boolean): void;
   /** Paper color (from the Base layer). null = transparent. */
   setPaperColor(color: string | null): void;
+  /** Updates the hex grid and HUD after the map scale changes. */
+  refreshScale(): void;
 }
 
 export function createMapView(): MapView {
@@ -55,7 +60,7 @@ export function createMapView(): MapView {
     overlay: createSvg('g', { 'data-layer': 'overlay' }),
   };
 
-  const hexGrid = createHexGrid(defs);
+  const hexGrid = createHexGrid(defs, mapScale.hexSizeUnits);
 
   svg.append(
     defs,
@@ -78,9 +83,18 @@ export function createMapView(): MapView {
   hexButton.title = 'Toggle hexcrawl grid';
   hexButton.textContent = '⬡ Hex';
 
+  const presetSelect = document.createElement('select');
+  presetSelect.className = 'map-hud__select';
+  presetSelect.title = 'Map size (sets the hex size and the km scale)';
+  for (const preset of SCALE_PRESETS) {
+    const option = document.createElement('option');
+    option.value = preset.id;
+    option.textContent = `${preset.icon} ${preset.name}`;
+    presetSelect.append(option);
+  }
+
   const hexLabel = document.createElement('span');
   hexLabel.className = 'map-hud__info';
-  hexLabel.textContent = `1 hex = ${HEX_SIZE_KM} km`;
   hexLabel.hidden = true;
 
   const zoomLabel = document.createElement('span');
@@ -93,7 +107,7 @@ export function createMapView(): MapView {
   centerButton.title = 'Center map';
   centerButton.textContent = '⌖ Center';
 
-  hud.append(hexButton, hexLabel, zoomLabel, centerButton);
+  hud.append(hexButton, presetSelect, hexLabel, zoomLabel, centerButton);
   element.append(svg, hud);
 
   function setZoomLabel(scale: number): void {
@@ -106,6 +120,15 @@ export function createMapView(): MapView {
     hexButton.classList.toggle('is-active', on);
   }
 
+  function refreshScale(): void {
+    const preset = mapScale.preset;
+    presetSelect.value = preset.id satisfies ScalePresetId;
+    presetSelect.title = `Map size: ${mapScale.worldSizeLabel}`;
+    hexLabel.textContent = `1 hex = ${formatDistance(preset.hexSizeKm)}`;
+    hexGrid.setHexSize(mapScale.hexSizeUnits);
+  }
+  refreshScale();
+
   function setPaperColor(color: string | null): void {
     paper.style.fill = color ?? 'transparent';
   }
@@ -116,9 +139,11 @@ export function createMapView(): MapView {
     layers,
     hexGrid,
     hexButton,
+    presetSelect,
     centerButton,
     setZoomLabel,
     setHexMode,
     setPaperColor,
+    refreshScale,
   };
 }

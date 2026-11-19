@@ -6,6 +6,7 @@ import {
 } from '../core/background';
 import { History } from '../core/history';
 import { isLayerEditable, type Layer } from '../core/layer';
+import { isScalePresetId, mapScale } from '../core/map-scale';
 import { applyTheme, loadTheme, type Theme } from '../core/theme';
 import { Viewport } from '../core/viewport';
 import {
@@ -16,6 +17,7 @@ import { attachShortcuts } from '../tools/shortcuts';
 import { TOOLS, type ToolId } from '../tools/tool-ids';
 import { createBackgroundPanel } from './background-panel';
 import { createDrawing } from './drawing';
+import { createFileController } from './file-controller';
 import { attachFileDrop } from './drop-zone';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
@@ -181,6 +183,21 @@ export function createLayout(root: HTMLElement): AppLayout {
   drawing.layers.onChange(updateImagePanel);
   updateImagePanel();
 
+  // ---------- Map scale (Continent / Kingdom / Town) ----------
+
+  mapView.presetSelect.addEventListener('change', () => {
+    const value = mapView.presetSelect.value;
+    if (isScalePresetId(value)) {
+      mapScale.set(value);
+      sidebar.setStatus(`Map size: ${mapScale.preset.name} (${mapScale.worldSizeLabel})`);
+    }
+  });
+  mapScale.onChange(() => mapView.refreshScale());
+
+  // ---------- Files ----------
+
+  const files = createFileController({ root, mapView, drawing, history, viewport });
+
   // ---------- Undo / redo & shortcuts ----------
 
   function undo(): void {
@@ -201,6 +218,9 @@ export function createLayout(root: HTMLElement): AppLayout {
     onRedo: redo,
     onDelete: () => drawing.deleteSelection(),
     onEscape: () => drawing.clearSelection(),
+    onSave: files.save,
+    onSaveAs: files.saveAs,
+    onOpen: files.open,
   });
 
   // ---------- Tools & theme ----------
@@ -225,6 +245,7 @@ export function createLayout(root: HTMLElement): AppLayout {
 
   setTheme(theme);
   selectTool('pan');
+  files.showStartMenu();
 
   return { toolbar, mapView, sidebar, viewport };
 }

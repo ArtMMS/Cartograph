@@ -11,6 +11,8 @@ export interface RemovedStroke {
 export class StrokeStore {
   private strokes: Stroke[] = [];
   private readonly listeners = new Set<() => void>();
+  /** Increases on every change (used to detect unsaved changes). */
+  revision = 0;
 
   all(): readonly Stroke[] {
     return this.strokes;
@@ -58,11 +60,18 @@ export class StrokeStore {
     this.emit();
   }
 
+  /** Replaces all strokes (e.g. when opening a file). */
+  replaceAll(strokes: Stroke[]): void {
+    this.strokes = [...strokes];
+    this.emit();
+  }
+
   onChange(listener: () => void): void {
     this.listeners.add(listener);
   }
 
   private emit(): void {
+    this.revision++;
     for (const listener of this.listeners) listener();
   }
 }

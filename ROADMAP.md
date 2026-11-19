@@ -37,23 +37,19 @@ Fase 4 — Camadas
 [x] Desenhar sempre na camada ativa
 
 Fase 5 — Salvar e abrir
-[ ] Menu inicial ao abrir: "criar novo" ou "carregar arquivo"
-[ ] Predefinições de Tamanho de Hexcrawl [ao apertar em criar novo]
-    - Continent
-    - Kingdom
-    - Town
-[ ] Definir formato do arquivo (MapFile em JSON, com versão)
-[ ] Salvar em arquivo (File System Access API)
-[ ] "Salvar" sobrescreve o arquivo aberto; "Salvar como" cria outro
-    [ ] CTRL + S for quicksave (notification after save completed)
-[ ] Abrir arquivo .json
-[ ] Imagem de fundo embutida no arquivo (base64) ou referenciada
-[ ] Aviso de alterações não salvas ao fechar a aba
-[ ] Autosave em localStorage como backup
+[x] Menu inicial ao abrir: "criar novo" ou "carregar arquivo"
+[x] Predefinições de Tamanho de Hexcrawl [ao apertar em criar novo] [pode ser editado durante o projeto também]
+[x] Definir formato do arquivo (MapFile em JSON, com versão)
+[x] Salvar em arquivo (File System Access API)
+[x] "Salvar" sobrescreve o arquivo aberto; "Salvar como" cria outro
+[x] Abrir arquivo .json
+[x] Imagem de fundo embutida no arquivo (base64) ou referenciada
+[x] Aviso de alterações não salvas ao fechar a aba
+[x] Autosave em localStorage como backup
 
 Fase 6 — Cidades e marcadores
 [ ] Ferramenta para colocar marcador (cidade, vila, capital, ponto de interesse)
-    [ ] Criar camada de marcadores automaticamente
+    [ ] Criar camada de marcadores automaticamente, ao adicionar o primeiro marcador
 [ ] Ícones diferentes por tipo de marcador
 [ ] Nome/legenda do marcador
 [ ] Mostrar/ocultar todas as legendas
@@ -70,7 +66,7 @@ Fase 7 — Regiões e nações
 [ ] Lista/árvore de regiões no painel lateral
 [ ] Mostrar/ocultar regiões por tipo
 [ ] Nome da região exibido no mapa
-[ ] Ferramenta para calcular distância
+[ ] Ferramenta para calcular distância e definir quantos dias de viagem (separado por vários meios de transporte; a pé, a cavalo / carroça, barco, voando...)
 
 Fase 8 — Encaixe e edição
 [ ] Snap: traço começa/termina grudado na ponta de outro traço próximo
