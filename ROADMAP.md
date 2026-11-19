@@ -8,20 +8,20 @@ Fase 1 — Base do projeto
 [x] Zoom com a roda do mouse (centrado no cursor)
 [x] Arrastar o mapa (pan) com botão do meio ou espaço + arrastar
 [x] Botão "Centralizar mapa"
-[ ] Light/Dark Mode + Button (Light = ☀️ | Dark = 🌕)
-[ ] Hexcrawl mode
+[x] Light/Dark Mode + Button (Light = ☀️ | Dark = 🌕)
+[x] Hexcrawl mode
 
 Fase 2 — Imagem de fundo
-[ ] Carregar imagem de fundo (PNG/JPG/WEBP) do PC
-[ ] Controle de opacidade (slider 0–100%)
-[ ] Ajustar posição e escala da imagem
+[x] Carregar imagem de fundo (PNG/JPG/WEBP) do PC
+[x] Controle de opacidade (slider 0–100%)
+[x] Ajustar posição e escala da imagem
 [ ] Travar/destravar a imagem de fundo
 [ ] Mostrar/ocultar a imagem de fundo
 
 Fase 3 — Desenho
 [ ] Ferramenta de traço livre (lápis) com perfect-freehand
 [ ] Escolher cor e espessura do traço
-[ ] Paleta de cores predefinidas (costa, montanha, floresta, rio, deserto, fronteira)
+[ ] Paleta de cores predefinidas com elementos simples (costa, montanha, floresta, rio, lago, deserto, fronteira)
 [ ] Ferramenta de seleção (clicar em um traço para selecionar)
 [ ] Apagar traço selecionado / borracha
 [ ] Atalhos de teclado para as ferramentas

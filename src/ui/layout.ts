@@ -1,6 +1,16 @@
+import {
+  createBackground,
+  fitBackground,
+  loadImageFile,
+  setScalePercent,
+  type BackgroundImage,
+} from '../core/background';
 import { applyTheme, loadTheme, type Theme } from '../core/theme';
 import { Viewport } from '../core/viewport';
+import { attachBackgroundMove } from '../tools/background-move';
 import { TOOLS, type ToolId } from '../tools/tool-ids';
+import { createBackgroundLayer } from './background-layer';
+import { createBackgroundPanel } from './background-panel';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
 import { createToolbar, type Toolbar } from './toolbar';
@@ -19,6 +29,8 @@ export function createLayout(root: HTMLElement): AppLayout {
   let activeTool: ToolId = 'pan';
   let theme: Theme = loadTheme();
   let hexMode = false;
+  let background: BackgroundImage | null = null;
+  let moveBackground = false;
 
   const sidebar = createSidebar();
   const mapView = createMapView();
@@ -29,10 +41,12 @@ export function createLayout(root: HTMLElement): AppLayout {
 
   root.append(toolbar.element, mapView.element, sidebar.element);
 
+  // ---------- Viewport ----------
+
   const viewport = new Viewport({
     svg: mapView.svg,
     container: mapView.element,
-    canPanWithLeftButton: () => activeTool === 'pan',
+    canPanWithLeftButton: () => activeTool === 'pan' && !moveBackground,
     onChange: (scale) => {
       mapView.setZoomLabel(scale);
       mapView.hexGrid.setScale(scale);
@@ -44,6 +58,79 @@ export function createLayout(root: HTMLElement): AppLayout {
     hexMode = !hexMode;
     mapView.setHexMode(hexMode);
   });
+
+  // ---------- Background image ----------
+
+  const backgroundLayer = createBackgroundLayer(mapView.layers.background);
+
+  const backgroundPanel = createBackgroundPanel({
+    onLoadFile: (file) => {
+      loadImageFile(file)
+        .then((image) => {
+          background = createBackground(image);
+          updateBackground();
+          sidebar.setStatus(`Background loaded: ${image.name}`);
+        })
+        .catch((err: unknown) => {
+          backgroundPanel.showError(err instanceof Error ? err.message : String(err));
+        });
+    },
+    onOpacity: (opacity) => {
+      if (!background) return;
+      background.opacity = opacity;
+      updateBackground();
+    },
+    onScalePercent: (percent) => {
+      if (!background) return;
+      setScalePercent(background, percent);
+      updateBackground();
+    },
+    onPosition: (x, y) => {
+      if (!background) return;
+      background.x = x;
+      background.y = y;
+      updateBackground();
+    },
+    onToggleMove: () => setMoveBackground(!moveBackground),
+    onFit: () => {
+      if (!background) return;
+      fitBackground(background);
+      updateBackground();
+    },
+    onRemove: () => {
+      background = null;
+      setMoveBackground(false);
+      updateBackground();
+      sidebar.setStatus('Background removed');
+    },
+  });
+  sidebar.backgroundSlot.append(backgroundPanel.element);
+
+  attachBackgroundMove({
+    svg: mapView.svg,
+    viewport,
+    isActive: () => moveBackground && background !== null,
+    onDrag: (dx, dy) => {
+      if (!background) return;
+      background.x += dx;
+      background.y += dy;
+      updateBackground();
+    },
+  });
+
+  function updateBackground(): void {
+    backgroundLayer.render(background);
+    backgroundPanel.render(background, moveBackground);
+  }
+
+  function setMoveBackground(on: boolean): void {
+    moveBackground = on;
+    mapView.element.classList.toggle('is-moving-bg', on);
+    viewport.refreshCursor();
+    updateBackground();
+  }
+
+  // ---------- Tools & theme ----------
 
   function selectTool(id: ToolId): void {
     activeTool = id;

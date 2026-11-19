@@ -1,5 +1,7 @@
 export interface Sidebar {
   element: HTMLElement;
+  /** Container for the background image controls. */
+  backgroundSlot: HTMLElement;
   /** Shows a message in the status line at the bottom of the sidebar. */
   setStatus(text: string): void;
 }
@@ -8,30 +10,39 @@ export function createSidebar(): Sidebar {
   const element = document.createElement('aside');
   element.className = 'sidebar';
 
-  element.innerHTML = `
-    <section class="sidebar__section">
-      <h2 class="sidebar__heading">Layers</h2>
-      <p class="sidebar__empty">No layers yet.</p>
-    </section>
+  const layers = createSection('Layers');
+  layers.body.innerHTML = '<p class="sidebar__empty">No layers yet.</p>';
 
-    <section class="sidebar__section">
-      <h2 class="sidebar__heading">Background</h2>
-      <p class="sidebar__empty">No background image.</p>
-    </section>
+  const background = createSection('Background');
 
-    <section class="sidebar__section sidebar__section--grow">
-      <h2 class="sidebar__heading">Details</h2>
-      <p class="sidebar__empty">Select a region or city to see its notes.</p>
-    </section>
+  const details = createSection('Details');
+  details.section.classList.add('sidebar__section--grow');
+  details.body.innerHTML =
+    '<p class="sidebar__empty">Select a region or city to see its notes.</p>';
 
-    <footer class="sidebar__status"></footer>
-  `;
+  const status = document.createElement('footer');
+  status.className = 'sidebar__status';
 
-  const status = element.querySelector<HTMLElement>('.sidebar__status')!;
+  element.append(layers.section, background.section, details.section, status);
 
   function setStatus(text: string): void {
     status.textContent = text;
   }
 
-  return { element, setStatus };
+  return { element, backgroundSlot: background.body, setStatus };
+}
+
+function createSection(title: string): { section: HTMLElement; body: HTMLElement } {
+  const section = document.createElement('section');
+  section.className = 'sidebar__section';
+
+  const heading = document.createElement('h2');
+  heading.className = 'sidebar__heading';
+  heading.textContent = title;
+
+  const body = document.createElement('div');
+  body.className = 'sidebar__body';
+
+  section.append(heading, body);
+  return { section, body };
 }
