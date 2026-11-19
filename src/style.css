@@ -149,6 +149,15 @@ body {
   cursor: cell;
 }
 
+.map-view[data-tool='marker'] .map-view__svg {
+  cursor: crosshair;
+}
+
+.map-view[data-tool='select'] .marker,
+.map-view[data-tool='marker'] .marker {
+  cursor: move;
+}
+
 .map-view.is-panning .map-view__svg {
   cursor: grabbing;
 }
@@ -990,4 +999,185 @@ body {
 
 .start-menu__back:hover {
   color: var(--text);
+}
+
+/* ---------- Markers (on the map) ---------- */
+
+.marker__shape {
+  fill: #c0392b;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.marker__shape--outline {
+  fill: #ffffff;
+  stroke: #c0392b;
+  stroke-width: 2.5;
+}
+
+.marker--poi .marker__shape {
+  fill: #7d3c98;
+}
+
+.marker__hit {
+  fill: transparent;
+}
+
+.marker__ring {
+  fill: none;
+  stroke: transparent;
+}
+
+.marker.is-selected .marker__ring {
+  stroke: #2f80ed;
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+
+.marker__label {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 12px;
+  fill: #1f1f1f;
+  stroke: #ffffff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+  pointer-events: none;
+  user-select: none;
+}
+
+.marker--capital .marker__label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.marker--village .marker__label {
+  font-size: 11px;
+}
+
+.hide-marker-labels .marker__label,
+.hide-marker-capital .marker--capital,
+.hide-marker-city .marker--city,
+.hide-marker-village .marker--village,
+.hide-marker-poi .marker--poi {
+  display: none;
+}
+
+/* ---------- Marker panels ---------- */
+
+.marker-types {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.marker-types__button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.marker-types__button:hover {
+  border-color: var(--accent);
+}
+
+.marker-types__button.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.marker-types__hint {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  font-size: 11px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.marker-view__labels {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.marker-view__labels input {
+  accent-color: var(--accent);
+}
+
+.marker-view__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.marker-view__chip {
+  padding: 3px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.marker-view__chip.is-off {
+  border-color: var(--panel-border);
+  background: transparent;
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.marker-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.marker-details__name,
+.marker-details__type,
+.marker-details__notes {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+}
+
+.marker-details__name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.marker-details__notes {
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.marker-details__name:focus,
+.marker-details__type:focus,
+.marker-details__notes:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.marker-details__pos {
+  margin: 0;
+  font-size: 11px;
+  color: var(--muted);
 }

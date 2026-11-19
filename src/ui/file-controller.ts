@@ -16,7 +16,9 @@ import {
 } from '../core/map-file';
 import { mapScale, type ScalePresetId } from '../core/map-scale';
 import type { Viewport } from '../core/viewport';
+import { createDefaultMarkerView } from '../core/marker';
 import type { Drawing } from './drawing';
+import type { Markers } from './markers';
 import { createFileBar } from './file-bar';
 import type { MapView } from './map-view';
 import { createStartMenu } from './start-menu';
@@ -30,6 +32,7 @@ export interface FileControllerOptions {
   root: HTMLElement;
   mapView: MapView;
   drawing: Drawing;
+  markers: Markers;
   history: History;
   viewport: Viewport;
 }
@@ -47,7 +50,7 @@ export interface FileController {
  * unsaved-changes tracking, autosave backup and the close-tab warning.
  */
 export function createFileController(options: FileControllerOptions): FileController {
-  const { root, mapView, drawing, history, viewport } = options;
+  const { root, mapView, drawing, markers, history, viewport } = options;
 
   let name = DEFAULT_NAME;
   let handle: FileSystemFileHandle | undefined;
@@ -94,7 +97,12 @@ export function createFileController(options: FileControllerOptions): FileContro
   // ---------- State ----------
 
   function currentRevision(): number {
-    return drawing.strokes.revision + drawing.layers.revision + mapScale.revision;
+    return (
+      drawing.strokes.revision +
+      drawing.layers.revision +
+      markers.store.revision +
+      mapScale.revision
+    );
   }
 
   function isDirty(): boolean {
@@ -120,12 +128,16 @@ export function createFileController(options: FileControllerOptions): FileContro
       activeLayerId: drawing.layers.getActive().id,
       layers: drawing.layers.all(),
       strokes: drawing.strokes.all(),
+      markers: markers.store.all(),
+      markerView: markers.store.getView(),
     });
   }
 
   function applyMapFile(file: MapFile): void {
     mapScale.set(file.scale);
     drawing.loadState(file.layers, file.strokes, file.activeLayerId);
+    markers.store.replaceAll(file.markers, file.markerView);
+    markers.clearSelection();
     history.clear();
     name = file.name || DEFAULT_NAME;
     markSaved();
@@ -149,6 +161,8 @@ export function createFileController(options: FileControllerOptions): FileContro
   function newMap(preset: ScalePresetId): void {
     mapScale.set(preset);
     drawing.loadState([createBaseLayer()], [], BASE_LAYER_ID);
+    markers.store.replaceAll([], createDefaultMarkerView());
+    markers.clearSelection();
     history.clear();
     name = DEFAULT_NAME;
     handle = undefined;
@@ -236,6 +250,7 @@ export function createFileController(options: FileControllerOptions): FileContro
 
   drawing.strokes.onChange(scheduleAutosave);
   drawing.layers.onChange(scheduleAutosave);
+  markers.store.onChange(scheduleAutosave);
   mapScale.onChange(scheduleAutosave);
 
   // ---------- Close-tab warning ----------

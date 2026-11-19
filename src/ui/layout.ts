@@ -18,6 +18,7 @@ import { TOOLS, type ToolId } from '../tools/tool-ids';
 import { createBackgroundPanel } from './background-panel';
 import { createDrawing } from './drawing';
 import { createFileController } from './file-controller';
+import { createMarkers, type Markers } from './markers';
 import { attachFileDrop } from './drop-zone';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
@@ -39,6 +40,7 @@ export function createLayout(root: HTMLElement): AppLayout {
   let hexMode = false;
   let transformMode = false;
   let transform: BackgroundTransform | null = null;
+  let markers: Markers | null = null;
   const history = new History();
 
   const sidebar = createSidebar();
@@ -66,6 +68,7 @@ export function createLayout(root: HTMLElement): AppLayout {
       mapView.setZoomLabel(scale);
       mapView.hexGrid.setScale(scale);
       transform?.render();
+      markers?.setZoom(scale);
     },
   });
 
@@ -84,6 +87,18 @@ export function createLayout(root: HTMLElement): AppLayout {
     history,
     getActiveTool: () => activeTool,
   });
+
+  // ---------- Markers (cities, villages, POIs) ----------
+
+  const markerController = createMarkers({
+    mapView,
+    viewport,
+    sidebar,
+    history,
+    drawing,
+    getActiveTool: () => activeTool,
+  });
+  markers = markerController;
 
   // ---------- Image layers ----------
 
@@ -196,19 +211,28 @@ export function createLayout(root: HTMLElement): AppLayout {
 
   // ---------- Files ----------
 
-  const files = createFileController({ root, mapView, drawing, history, viewport });
+  const files = createFileController({
+    root,
+    mapView,
+    drawing,
+    markers: markerController,
+    history,
+    viewport,
+  });
 
   // ---------- Undo / redo & shortcuts ----------
 
   function undo(): void {
     const command = history.undo();
     drawing.refreshSelection();
+    markerController.refreshSelection();
     sidebar.setStatus(command ? `Undo: ${command.label}` : 'Nothing to undo');
   }
 
   function redo(): void {
     const command = history.redo();
     drawing.refreshSelection();
+    markerController.refreshSelection();
     sidebar.setStatus(command ? `Redo: ${command.label}` : 'Nothing to redo');
   }
 
@@ -216,8 +240,14 @@ export function createLayout(root: HTMLElement): AppLayout {
     onTool: selectTool,
     onUndo: undo,
     onRedo: redo,
-    onDelete: () => drawing.deleteSelection(),
-    onEscape: () => drawing.clearSelection(),
+    onDelete: () => {
+      if (markerController.hasSelection()) markerController.deleteSelection();
+      else drawing.deleteSelection();
+    },
+    onEscape: () => {
+      drawing.clearSelection();
+      markerController.clearSelection();
+    },
     onSave: files.save,
     onSaveAs: files.saveAs,
     onOpen: files.open,
@@ -230,6 +260,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     toolbar.setActive(id);
     mapView.element.dataset.tool = id;
     drawing.onToolChange(id);
+    markerController.onToolChange(id);
     if (id !== 'pan' && transformMode) setTransformMode(false);
     viewport.refreshCursor();
 

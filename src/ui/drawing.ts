@@ -1,4 +1,4 @@
-import type { Command, History } from '../core/history';
+import type { History } from '../core/history';
 import type { LoadedImage } from '../core/background';
 import {
   BASE_LAYER_ID,
@@ -41,6 +41,12 @@ export interface Drawing {
   addImageLayer(image: LoadedImage): Layer;
   /** Deletes a layer and its strokes (undoable). */
   deleteLayer(id: string): void;
+  /** Registers other content stored in layers (e.g. markers). */
+  registerLayerContent(content: LayerContent): void;
+  /** Redraws the layers list (e.g. after markers change). */
+  refresh(): void;
+  /** The SVG group of a layer (markers draw inside it). */
+  getLayerGroup(layerId: string): SVGGElement | undefined;
   /** Replaces everything (opening a file or starting a new map). */
   loadState(layers: Layer[], strokes: Stroke[], activeLayerId: string): void;
   /** Call when the active tool changes. */
@@ -51,11 +57,12 @@ export interface Drawing {
   refreshSelection(): void;
 }
 
-/** A command whose "after" state can be updated by later quick edits. */
-interface MergeableCommand<T> extends Command {
-  mergeKey: string;
-  time: number;
-  after: T;
+/** Other things stored in layers (markers…), so deleting a layer also removes them. */
+export interface LayerContent {
+  /** Removes everything in the layer; returns a function that puts it back. */
+  removeFromLayer(layerId: string): () => void;
+  /** How many items the layer holds (shown in the layers list). */
+  count(layerId: string): number;
 }
 
 /** Strokes and layers: pencil, select, eraser, brush/selection/layers panels, undo steps. */
@@ -78,10 +85,6 @@ export function createDrawing(options: DrawingOptions): Drawing {
     });
   }
 
-  /**
-   * Applies a change and records it. Quick repeated changes with the same
-   * key are merged into one undo step.
-   */
   function pushMergeable<T>(
     label: string,
     key: string,
@@ -89,25 +92,12 @@ export function createDrawing(options: DrawingOptions): Drawing {
     after: T,
     apply: (value: T) => void,
   ): void {
-    apply(after);
-
-    const last = history.last() as MergeableCommand<T> | undefined;
-    if (last?.mergeKey === key && Date.now() - last.time < MERGE_WINDOW_MS) {
-      last.after = after;
-      last.time = Date.now();
-      return;
-    }
-
-    const command: MergeableCommand<T> = {
-      label,
-      mergeKey: key,
-      time: Date.now(),
-      after,
-      undo: () => apply(before),
-      redo: () => apply(command.after),
-    };
-    history.push(command);
+    history.pushMergeable(label, key, before, after, apply, MERGE_WINDOW_MS);
   }
+
+  // ---------- Other content living in layers (e.g. markers) ----------
+
+  const contents: LayerContent[] = [];
 
   // ---------- Stroke actions ----------
 
@@ -208,6 +198,7 @@ export function createDrawing(options: DrawingOptions): Drawing {
 
     const wasActive = layers.getActive().id === id;
     const removedStrokes = strokes.removeWhere((s) => s.layerId === id);
+    let restoreContents = contents.map((c) => c.removeFromLayer(id));
     const removedLayer = layers.remove(id);
     if (!removedLayer) return;
 
@@ -216,10 +207,12 @@ export function createDrawing(options: DrawingOptions): Drawing {
       undo: () => {
         layers.insert(removedLayer.layer, removedLayer.index);
         restoreStrokes(removedStrokes);
+        for (const restore of restoreContents) restore();
         if (wasActive) layers.setActive(id);
       },
       redo: () => {
         strokes.removeWhere((s) => s.layerId === id);
+        restoreContents = contents.map((c) => c.removeFromLayer(id));
         layers.remove(id);
       },
     });
@@ -357,6 +350,9 @@ export function createDrawing(options: DrawingOptions): Drawing {
 
     const counts = new Map<string, number>();
     for (const s of strokes.all()) counts.set(s.layerId, (counts.get(s.layerId) ?? 0) + 1);
+    for (const l of layers.all()) {
+      for (const c of contents) counts.set(l.id, (counts.get(l.id) ?? 0) + c.count(l.id));
+    }
     layersPanel.render(layers.all(), layers.getActive().id, counts);
 
     if (selectedId) renderSelectionPanel();
@@ -374,8 +370,9 @@ export function createDrawing(options: DrawingOptions): Drawing {
     isActive: () => options.getActiveTool() === 'pencil',
     getTarget: () => {
       const active: Layer = layers.getActive();
-      if (active.kind === 'image') {
-        return `"${active.name}" is an image layer — select a drawing layer to draw`;
+      if (active.kind !== 'draw') {
+        const kind = active.kind === 'image' ? 'an image' : 'a marker';
+        return `"${active.name}" is ${kind} layer — select a drawing layer to draw`;
       }
       if (!active.visible) return `"${active.name}" is hidden — show it to draw`;
       if (active.locked) return `"${active.name}" is locked — unlock it to draw`;
@@ -439,6 +436,12 @@ export function createDrawing(options: DrawingOptions): Drawing {
     layers,
     addImageLayer,
     deleteLayer,
+    registerLayerContent: (content) => {
+      contents.push(content);
+      renderAll();
+    },
+    refresh: renderAll,
+    getLayerGroup: (layerId) => layer.getGroup(layerId),
     loadState,
     onToolChange,
     deleteSelection,

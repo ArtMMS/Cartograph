@@ -10,6 +10,8 @@ export interface StrokeLayer {
   setPreview(stroke: Stroke | null): void;
   /** Highlights the selected stroke (null clears it). */
   setSelected(id: string | null): void;
+  /** The SVG group of a layer (other renderers, like markers, draw inside it). */
+  getGroup(layerId: string): SVGGElement | undefined;
 }
 
 interface CachedImage {
@@ -149,7 +151,7 @@ export function createStrokeLayer(group: SVGGElement): StrokeLayer {
     }
   }
 
-  return { sync, setPreview, setSelected };
+  return { sync, setPreview, setSelected, getGroup: (id) => groups.get(id) };
 }
 
 /** Puts `child` at position `index` inside `parent` (only moves it if needed). */

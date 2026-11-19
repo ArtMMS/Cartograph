@@ -48,14 +48,14 @@ Fase 5 — Salvar e abrir
 [x] Autosave em localStorage como backup
 
 Fase 6 — Cidades e marcadores
-[ ] Ferramenta para colocar marcador (cidade, vila, capital, ponto de interesse)
-    [ ] Criar camada de marcadores automaticamente, ao adicionar o primeiro marcador
-[ ] Ícones diferentes por tipo de marcador
-[ ] Nome/legenda do marcador
-[ ] Mostrar/ocultar todas as legendas
-[ ] Mostrar/ocultar marcadores por tipo
-[ ] Mover e excluir marcadores
-[ ] Notas em cada marcador (painel lateral)
+[x] Ferramenta para colocar marcador (cidade, vila, capital, ponto de interesse)
+    [x] Criar camada de marcadores automaticamente, ao adicionar o primeiro marcador
+[x] Ícones diferentes por tipo de marcador
+[x] Nome/legenda do marcador
+[x] Mostrar/ocultar todas as legendas
+[x] Mostrar/ocultar marcadores por tipo
+[x] Mover e excluir marcadores
+[x] Notas em cada marcador (painel lateral)
 
 Fase 7 — Regiões e nações
 [ ] Ferramenta de região: desenhar contorno que fecha automaticamente
@@ -66,12 +66,13 @@ Fase 7 — Regiões e nações
 [ ] Lista/árvore de regiões no painel lateral
 [ ] Mostrar/ocultar regiões por tipo
 [ ] Nome da região exibido no mapa
-[ ] Ferramenta para calcular distância e definir quantos dias de viagem (separado por vários meios de transporte; a pé, a cavalo / carroça, barco, voando...)
+[ ] Ferramenta para calcular distância (km) e definir quantos dias de viagem (SEMPRE falar quantos dias, horas e minutos serão necessários) (separado por vários meios de transporte; a pé, a cavalo / carroça, barco, voando...)
 
 Fase 8 — Encaixe e edição
 [ ] Snap: traço começa/termina grudado na ponta de outro traço próximo
 [ ] Ligar/desligar snap e ajustar a distância
 [ ] Mover e duplicar elementos selecionados
+[ ] Fazer desenho de elementos incluir simbolos que representem (usar a imagem de exemplo)
 
 Fase 9 — Extras
 [ ] Exportar o mapa como PNG/SVG (com ou sem legendas)

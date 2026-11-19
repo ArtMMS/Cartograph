@@ -74,6 +74,11 @@ export class Viewport {
     });
   }
 
+  /** True while Space is held (Space + drag pans with any tool). */
+  isPanKeyDown(): boolean {
+    return this.spaceDown;
+  }
+
   /** Current zoom (1 = 100%). */
   getScale(): number {
     return this.scale;

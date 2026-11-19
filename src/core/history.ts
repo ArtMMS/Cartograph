@@ -5,6 +5,12 @@ export interface Command {
   redo(): void;
 }
 
+interface MergeableCommand<T> extends Command {
+  mergeKey: string;
+  time: number;
+  after: T;
+}
+
 /**
  * Undo/redo stack. Actions are performed by the caller first,
  * then pushed here so they can be undone later.
@@ -22,6 +28,42 @@ export class History {
     this.done.push(command);
     if (this.done.length > this.limit) this.done.shift();
     this.undone = [];
+  }
+
+  /**
+   * Applies a change and records it. Quick repeated changes with the same
+   * key (e.g. dragging a slider, typing a name) merge into one undo step.
+   */
+  pushMergeable<T>(
+    label: string,
+    key: string,
+    before: T,
+    after: T,
+    apply: (value: T) => void,
+    mergeWindowMs = 1000,
+  ): void {
+    apply(after);
+
+    const last = this.last() as MergeableCommand<T> | undefined;
+    if (
+      last?.mergeKey === key &&
+      this.undone.length === 0 &&
+      Date.now() - last.time < mergeWindowMs
+    ) {
+      last.after = after;
+      last.time = Date.now();
+      return;
+    }
+
+    const command: MergeableCommand<T> = {
+      label,
+      mergeKey: key,
+      time: Date.now(),
+      after,
+      undo: () => apply(before),
+      redo: () => apply(command.after),
+    };
+    this.push(command);
   }
 
   /** The most recent command (used to merge quick repeated edits). */
