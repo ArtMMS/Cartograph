@@ -15,8 +15,8 @@ Fase 2 — Imagem de fundo
 [x] Carregar imagem de fundo (PNG/JPG/WEBP) do PC
 [x] Controle de opacidade (slider 0–100%)
 [x] Ajustar posição e escala da imagem
-[ ] Travar/destravar a imagem de fundo
-[ ] Mostrar/ocultar a imagem de fundo
+[x] Travar/destravar a imagem de fundo
+[x] Mostrar/ocultar a imagem de fundo
 
 Fase 3 — Desenho
 [ ] Ferramenta de traço livre (lápis) com perfect-freehand

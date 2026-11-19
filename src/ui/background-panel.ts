@@ -1,4 +1,9 @@
-import { ACCEPTED_IMAGE_TYPES, getScalePercent, type BackgroundImage } from '../core/background';
+import {
+  ACCEPTED_IMAGE_TYPES,
+  canEditBackground,
+  getScalePercent,
+  type BackgroundImage,
+} from '../core/background';
 
 const MIN_SCALE_PERCENT = 10;
 const MAX_SCALE_PERCENT = 400;
@@ -11,6 +16,8 @@ export interface BackgroundPanelHandlers {
   onScalePercent(percent: number): void;
   onPosition(x: number, y: number): void;
   onToggleMove(): void;
+  onToggleLock(): void;
+  onToggleVisible(): void;
   onFit(): void;
   onRemove(): void;
 }
@@ -32,7 +39,11 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
     <p class="bg-panel__error" hidden></p>
 
     <div class="bg-panel__controls" hidden>
-      <p class="bg-panel__name"></p>
+      <div class="bg-panel__header">
+        <p class="bg-panel__name"></p>
+        <button class="icon-button bg-panel__visible" type="button"></button>
+        <button class="icon-button bg-panel__lock" type="button"></button>
+      </div>
 
       <label class="field">
         <span class="field__label">Opacity</span>
@@ -74,6 +85,8 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
   const error = q<HTMLParagraphElement>('.bg-panel__error');
   const controls = q<HTMLDivElement>('.bg-panel__controls');
   const name = q<HTMLParagraphElement>('.bg-panel__name');
+  const visibleButton = q<HTMLButtonElement>('.bg-panel__visible');
+  const lockButton = q<HTMLButtonElement>('.bg-panel__lock');
   const opacity = q<HTMLInputElement>('.bg-panel__opacity');
   const opacityValue = q<HTMLSpanElement>('.bg-panel__opacity-value');
   const scale = q<HTMLInputElement>('.bg-panel__scale');
@@ -112,6 +125,8 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
   posY.addEventListener('change', onPositionInput);
 
   moveButton.addEventListener('click', handlers.onToggleMove);
+  visibleButton.addEventListener('click', handlers.onToggleVisible);
+  lockButton.addEventListener('click', handlers.onToggleLock);
   fitButton.addEventListener('click', handlers.onFit);
   removeButton.addEventListener('click', handlers.onRemove);
 
@@ -143,6 +158,21 @@ export function createBackgroundPanel(handlers: BackgroundPanelHandlers): Backgr
     setValue(posY, bg.y);
 
     moveButton.classList.toggle('is-active', moveMode);
+
+    visibleButton.textContent = bg.visible ? '👁' : '🚫';
+    visibleButton.title = bg.visible ? 'Hide background' : 'Show background';
+    visibleButton.classList.toggle('is-off', !bg.visible);
+
+    lockButton.textContent = bg.locked ? '🔒' : '🔓';
+    lockButton.title = bg.locked ? 'Unlock background' : 'Lock background';
+    lockButton.classList.toggle('is-active', bg.locked);
+
+    // Locked or hidden: position and scale can't be changed.
+    const editable = canEditBackground(bg);
+    for (const input of [scale, scaleNumber, posX, posY]) input.disabled = !editable;
+    moveButton.disabled = !editable;
+    fitButton.disabled = !editable;
+    opacity.disabled = !bg.visible;
   }
 
   function showError(message: string): void {

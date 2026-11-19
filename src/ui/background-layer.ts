@@ -33,6 +33,7 @@ export function createBackgroundLayer(group: SVGGElement): BackgroundLayer {
     image.setAttribute('width', String(bg.naturalWidth * bg.scale));
     image.setAttribute('height', String(bg.naturalHeight * bg.scale));
     image.setAttribute('opacity', String(bg.opacity));
+    image.style.display = bg.visible ? '' : 'none';
   }
 
   return { render };

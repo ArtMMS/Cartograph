@@ -1,4 +1,5 @@
 import {
+  canEditBackground,
   createBackground,
   fitBackground,
   loadImageFile,
@@ -81,19 +82,36 @@ export function createLayout(root: HTMLElement): AppLayout {
       updateBackground();
     },
     onScalePercent: (percent) => {
-      if (!background) return;
+      if (!background || !canEditBackground(background)) return;
       setScalePercent(background, percent);
       updateBackground();
     },
     onPosition: (x, y) => {
-      if (!background) return;
+      if (!background || !canEditBackground(background)) return;
       background.x = x;
       background.y = y;
       updateBackground();
     },
-    onToggleMove: () => setMoveBackground(!moveBackground),
-    onFit: () => {
+    onToggleMove: () => {
+      if (!background || !canEditBackground(background)) return;
+      setMoveBackground(!moveBackground);
+    },
+    onToggleLock: () => {
       if (!background) return;
+      background.locked = !background.locked;
+      if (background.locked) setMoveBackground(false);
+      updateBackground();
+      sidebar.setStatus(background.locked ? 'Background locked' : 'Background unlocked');
+    },
+    onToggleVisible: () => {
+      if (!background) return;
+      background.visible = !background.visible;
+      if (!background.visible) setMoveBackground(false);
+      updateBackground();
+      sidebar.setStatus(background.visible ? 'Background shown' : 'Background hidden');
+    },
+    onFit: () => {
+      if (!background || !canEditBackground(background)) return;
       fitBackground(background);
       updateBackground();
     },
@@ -109,7 +127,7 @@ export function createLayout(root: HTMLElement): AppLayout {
   attachBackgroundMove({
     svg: mapView.svg,
     viewport,
-    isActive: () => moveBackground && background !== null,
+    isActive: () => moveBackground && background !== null && canEditBackground(background),
     onDrag: (dx, dy) => {
       if (!background) return;
       background.x += dx;

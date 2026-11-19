@@ -17,6 +17,15 @@ export interface BackgroundImage {
   scale: number;
   /** 0–1. */
   opacity: number;
+  /** When locked, position and scale can't be changed. */
+  locked: boolean;
+  /** When hidden, the image isn't drawn (settings are kept). */
+  visible: boolean;
+}
+
+/** True when the image can be moved or resized. */
+export function canEditBackground(bg: BackgroundImage): boolean {
+  return !bg.locked && bg.visible;
 }
 
 export interface LoadedImage {
@@ -71,6 +80,8 @@ export function createBackground(image: LoadedImage): BackgroundImage {
     y: 0,
     scale: 1,
     opacity: 0.5,
+    locked: false,
+    visible: true,
   };
   fitBackground(bg);
   return bg;
