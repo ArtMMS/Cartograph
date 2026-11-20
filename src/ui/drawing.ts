@@ -53,6 +53,8 @@ export interface Drawing {
   onToolChange(id: ToolId): void;
   deleteSelection(): void;
   clearSelection(): void;
+  /** True when a stroke is selected. */
+  hasSelection(): boolean;
   /** Call after undo/redo, in case the selected stroke no longer exists. */
   refreshSelection(): void;
 }
@@ -371,7 +373,8 @@ export function createDrawing(options: DrawingOptions): Drawing {
     getTarget: () => {
       const active: Layer = layers.getActive();
       if (active.kind !== 'draw') {
-        const kind = active.kind === 'image' ? 'an image' : 'a marker';
+        const kinds = { image: 'an image', markers: 'a marker', regions: 'a region' } as const;
+        const kind = kinds[active.kind];
         return `"${active.name}" is ${kind} layer — select a drawing layer to draw`;
       }
       if (!active.visible) return `"${active.name}" is hidden — show it to draw`;
@@ -446,6 +449,7 @@ export function createDrawing(options: DrawingOptions): Drawing {
     onToolChange,
     deleteSelection,
     clearSelection: () => select(null),
+    hasSelection: () => selectedId !== null,
     refreshSelection,
   };
 }

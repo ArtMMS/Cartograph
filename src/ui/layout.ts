@@ -19,6 +19,9 @@ import { createBackgroundPanel } from './background-panel';
 import { createDrawing } from './drawing';
 import { createFileController } from './file-controller';
 import { createMarkers, type Markers } from './markers';
+import { createRegions, type Regions } from './regions';
+import { createTravelPanel } from './travel-panel';
+import { attachMeasure, type Measure } from '../tools/measure';
 import { attachFileDrop } from './drop-zone';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
@@ -41,6 +44,8 @@ export function createLayout(root: HTMLElement): AppLayout {
   let transformMode = false;
   let transform: BackgroundTransform | null = null;
   let markers: Markers | null = null;
+  let regions: Regions | null = null;
+  let measure: Measure | null = null;
   const history = new History();
 
   const sidebar = createSidebar();
@@ -69,6 +74,8 @@ export function createLayout(root: HTMLElement): AppLayout {
       mapView.hexGrid.setScale(scale);
       transform?.render();
       markers?.setZoom(scale);
+      regions?.setZoom(scale);
+      measure?.setZoom(scale);
     },
   });
 
@@ -99,6 +106,42 @@ export function createLayout(root: HTMLElement): AppLayout {
     getActiveTool: () => activeTool,
   });
   markers = markerController;
+
+  // ---------- Regions & nations ----------
+
+  const regionController = createRegions({
+    mapView,
+    viewport,
+    sidebar,
+    history,
+    drawing,
+    getActiveTool: () => activeTool,
+  });
+  regions = regionController;
+
+  // ---------- Distance & travel time ----------
+
+  const travelPanel = createTravelPanel(() => measure?.clear());
+  sidebar.travelSlot.append(travelPanel.element);
+  let lastMeasure = { length: 0, finished: false, points: 0 };
+  const renderTravel = (): void =>
+    travelPanel.render(
+      lastMeasure.length * mapScale.kmPerUnit,
+      lastMeasure.finished,
+      lastMeasure.points,
+    );
+
+  measure = attachMeasure({
+    svg: mapView.svg,
+    viewport,
+    overlay: mapView.layers.overlay,
+    isActive: () => activeTool === 'measure',
+    onChange: (length, finished, points) => {
+      lastMeasure = { length, finished, points };
+      renderTravel();
+    },
+  });
+  mapScale.onChange(renderTravel);
 
   // ---------- Image layers ----------
 
@@ -216,6 +259,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     mapView,
     drawing,
     markers: markerController,
+    regions: regionController,
     history,
     viewport,
   });
@@ -226,6 +270,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     const command = history.undo();
     drawing.refreshSelection();
     markerController.refreshSelection();
+    regionController.refreshSelection();
     sidebar.setStatus(command ? `Undo: ${command.label}` : 'Nothing to undo');
   }
 
@@ -233,6 +278,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     const command = history.redo();
     drawing.refreshSelection();
     markerController.refreshSelection();
+    regionController.refreshSelection();
     sidebar.setStatus(command ? `Redo: ${command.label}` : 'Nothing to redo');
   }
 
@@ -242,11 +288,14 @@ export function createLayout(root: HTMLElement): AppLayout {
     onRedo: redo,
     onDelete: () => {
       if (markerController.hasSelection()) markerController.deleteSelection();
+      else if (regionController.hasSelection()) regionController.deleteSelection();
       else drawing.deleteSelection();
     },
     onEscape: () => {
       drawing.clearSelection();
       markerController.clearSelection();
+      regionController.clearSelection();
+      if (activeTool === 'measure') measure?.clear();
     },
     onSave: files.save,
     onSaveAs: files.saveAs,
@@ -261,6 +310,8 @@ export function createLayout(root: HTMLElement): AppLayout {
     mapView.element.dataset.tool = id;
     drawing.onToolChange(id);
     markerController.onToolChange(id);
+    regionController.onToolChange(id);
+    sidebar.setTravelVisible(id === 'measure');
     if (id !== 'pan' && transformMode) setTransformMode(false);
     viewport.refreshCursor();
 

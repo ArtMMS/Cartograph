@@ -1,4 +1,5 @@
 import { MARKER_TYPES, type Marker, type MarkerType, type MarkerView } from '../core/marker';
+import { createNotesEditor } from './notes-editor';
 
 // ---------- "New marker" type picker (visible with the Marker tool) ----------
 
@@ -108,14 +109,15 @@ export function createMarkerDetails(handlers: MarkerDetailsHandlers): MarkerDeta
     <select class="marker-details__type">
       ${MARKER_TYPES.map((t) => `<option value="${t.id}">${t.icon} ${t.name}</option>`).join('')}
     </select>
-    <textarea class="marker-details__notes" placeholder="Notes: history, NPCs, rumors, shops…" rows="8"></textarea>
+    <div class="marker-details__notes-slot"></div>
     <p class="marker-details__pos"></p>
     <button type="button" class="panel-button panel-button--danger marker-details__delete">🗑 Delete marker (Del)</button>
   `;
 
   const name = element.querySelector<HTMLInputElement>('.marker-details__name')!;
   const type = element.querySelector<HTMLSelectElement>('.marker-details__type')!;
-  const notes = element.querySelector<HTMLTextAreaElement>('.marker-details__notes')!;
+  const notes = createNotesEditor(handlers.onNotes);
+  element.querySelector('.marker-details__notes-slot')!.append(notes.element);
   const pos = element.querySelector<HTMLParagraphElement>('.marker-details__pos')!;
 
   name.addEventListener('input', () => handlers.onName(name.value));
@@ -123,7 +125,6 @@ export function createMarkerDetails(handlers: MarkerDetailsHandlers): MarkerDeta
     if (e.key === 'Enter') name.blur();
   });
   type.addEventListener('change', () => handlers.onType(type.value as MarkerType));
-  notes.addEventListener('input', () => handlers.onNotes(notes.value));
   element
     .querySelector('.marker-details__delete')!
     .addEventListener('click', handlers.onDelete);
@@ -134,10 +135,11 @@ export function createMarkerDetails(handlers: MarkerDetailsHandlers): MarkerDeta
     // Another marker was selected: leave the fields and show its values.
     if (marker.id !== shownId) {
       if (element.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
+      notes.blur();
       shownId = marker.id;
     }
     if (document.activeElement !== name) name.value = marker.name;
-    if (document.activeElement !== notes) notes.value = marker.notes;
+    notes.setValue(marker.notes);
     type.value = marker.type;
     pos.textContent = kmLabel;
   }

@@ -6,6 +6,12 @@ export interface Sidebar {
   selectionSlot: HTMLElement;
   /** Container for the "new marker" type picker. */
   markerToolSlot: HTMLElement;
+  /** Container for the "new region" type picker. */
+  regionToolSlot: HTMLElement;
+  /** Container for the distance / travel time results. */
+  travelSlot: HTMLElement;
+  /** Container for the regions tree. */
+  regionsSlot: HTMLElement;
   /** Container for the layers list. */
   layersSlot: HTMLElement;
   /** Container for the marker display settings. */
@@ -18,8 +24,14 @@ export interface Sidebar {
   setSelectionVisible(visible: boolean): void;
   /** Shows/hides the New marker section (only with the Marker tool). */
   setMarkerToolVisible(visible: boolean): void;
+  /** Shows/hides the New region section (only with the Region tool). */
+  setRegionToolVisible(visible: boolean): void;
+  /** Shows/hides the Distance section (only with the Distance tool). */
+  setTravelVisible(visible: boolean): void;
   /** Shows an element in the Details section (null = empty message). */
   setDetails(content: HTMLElement | null, title?: string): void;
+  /** Empties the Details section, but only if it's showing `content`. */
+  clearDetails(content: HTMLElement): void;
   /** Shows a message in the status line at the bottom of the sidebar. */
   setStatus(text: string): void;
 }
@@ -31,6 +43,9 @@ export function createSidebar(): Sidebar {
   const brush = createSection('Brush');
   const selection = createSection('Selected stroke');
   const markerTool = createSection('New marker');
+  const regionTool = createSection('New region');
+  const travel = createSection('Distance & travel time');
+  const regions = createSection('Regions');
   const layers = createSection('Layers');
   const markers = createSection('Markers');
   const background = createSection('Images');
@@ -39,7 +54,7 @@ export function createSidebar(): Sidebar {
   details.section.classList.add('sidebar__section--grow');
   const emptyDetails = document.createElement('p');
   emptyDetails.className = 'sidebar__empty';
-  emptyDetails.textContent = 'Select a city or marker to see its notes.';
+  emptyDetails.textContent = 'Select a city or region to see its notes.';
   details.body.append(emptyDetails);
 
   const status = document.createElement('footer');
@@ -49,8 +64,11 @@ export function createSidebar(): Sidebar {
     brush.section,
     selection.section,
     markerTool.section,
+    regionTool.section,
+    travel.section,
     details.section,
     layers.section,
+    regions.section,
     markers.section,
     background.section,
     status,
@@ -68,6 +86,18 @@ export function createSidebar(): Sidebar {
     markerTool.section.hidden = !visible;
   }
 
+  function setRegionToolVisible(visible: boolean): void {
+    regionTool.section.hidden = !visible;
+  }
+
+  function setTravelVisible(visible: boolean): void {
+    travel.section.hidden = !visible;
+  }
+
+  function clearDetails(content: HTMLElement): void {
+    if (details.body.firstChild === content) setDetails(null);
+  }
+
   function setDetails(content: HTMLElement | null, title = 'Details'): void {
     details.heading.textContent = content ? title : 'Details';
     const next = content ?? emptyDetails;
@@ -82,6 +112,8 @@ export function createSidebar(): Sidebar {
 
   setSelectionVisible(false);
   setMarkerToolVisible(false);
+  setRegionToolVisible(false);
+  setTravelVisible(false);
   setDetails(null);
 
   return {
@@ -89,13 +121,19 @@ export function createSidebar(): Sidebar {
     brushSlot: brush.body,
     selectionSlot: selection.body,
     markerToolSlot: markerTool.body,
+    regionToolSlot: regionTool.body,
+    travelSlot: travel.body,
+    regionsSlot: regions.body,
     layersSlot: layers.body,
     markersSlot: markers.body,
     backgroundSlot: background.body,
     setBrushVisible,
     setSelectionVisible,
     setMarkerToolVisible,
+    setRegionToolVisible,
+    setTravelVisible,
     setDetails,
+    clearDetails,
     setStatus,
   };
 }

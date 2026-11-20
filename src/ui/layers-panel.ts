@@ -170,6 +170,9 @@ export function createLayersPanel(handlers: LayersPanelHandlers): LayersPanel {
       if (layer.kind === 'image') {
         row.count.textContent = '🖼';
         row.count.title = 'Image layer';
+      } else if (layer.kind === 'regions') {
+        row.count.textContent = `⬠${counts.get(layer.id) ?? 0}`;
+        row.count.title = 'Regions in this layer';
       } else if (layer.kind === 'markers') {
         row.count.textContent = `📍${counts.get(layer.id) ?? 0}`;
         row.count.title = 'Markers in this layer';

@@ -7,6 +7,12 @@ import {
   type Marker,
   type MarkerView,
 } from './marker';
+import {
+  createDefaultRegionView,
+  isRegionType,
+  type Region,
+  type RegionView,
+} from './region';
 import type { Stroke, StrokePoint } from './stroke';
 
 export const MAP_FILE_VERSION = 1;
@@ -30,6 +36,9 @@ export interface MapFile {
   /** Cities, villages, points of interest. */
   markers: Marker[];
   markerView: MarkerView;
+  /** Continents, nations, regions, areas. */
+  regions: Region[];
+  regionView: RegionView;
 }
 
 export interface MapState {
@@ -40,6 +49,8 @@ export interface MapState {
   strokes: readonly Stroke[];
   markers: readonly Marker[];
   markerView: MarkerView;
+  regions: readonly Region[];
+  regionView: RegionView;
 }
 
 /** Turns the current map into a MapFile object. */
@@ -55,6 +66,8 @@ export function toMapFile(state: MapState): MapFile {
     strokes: state.strokes.map((s) => ({ ...s, points: s.points.map(roundPoint) })),
     markers: state.markers.map((m) => ({ ...m, x: round(m.x), y: round(m.y) })),
     markerView: { ...state.markerView, hiddenTypes: [...state.markerView.hiddenTypes] },
+    regions: state.regions.map((r) => ({ ...r, points: r.points.map((p) => [round(p[0]), round(p[1])]) })),
+    regionView: { ...state.regionView, hiddenTypes: [...state.regionView.hiddenTypes] },
   };
 }
 
@@ -92,11 +105,21 @@ export function parseMapFile(text: string): MapFile {
   );
   const markerView = parseMarkerView(data.markerView);
 
+  // Regions are optional too. Parents that don't exist are cleared.
+  const regions = (Array.isArray(data.regions) ? data.regions.filter(isRegion) : []).filter((r) =>
+    layerIds.has(r.layerId),
+  );
+  const regionIds = new Set(regions.map((r) => r.id));
+  for (const r of regions) if (r.parentId && !regionIds.has(r.parentId)) r.parentId = null;
+  const regionView = parseRegionView(data.regionView);
+
   return {
     app: MAP_FILE_APP,
     version: MAP_FILE_VERSION,
     markers,
     markerView,
+    regions,
+    regionView,
     name: typeof data.name === 'string' ? data.name : 'Untitled map',
     savedAt: typeof data.savedAt === 'string' ? data.savedAt : '',
     scale: isScalePresetId(data.scale) ? data.scale : DEFAULT_SCALE_PRESET,
@@ -115,7 +138,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 function isLayer(value: unknown): value is Layer {
   if (!isObject(value)) return false;
   if (typeof value.id !== 'string' || typeof value.name !== 'string') return false;
-  if (value.kind !== 'draw' && value.kind !== 'image' && value.kind !== 'markers') return false;
+  if (!['draw', 'image', 'markers', 'regions'].includes(String(value.kind))) return false;
   if (value.kind === 'image' && !isImageFile(value.image)) return false;
   value.visible = value.visible !== false;
   value.locked = value.locked === true;
@@ -148,6 +171,33 @@ function isMarker(value: unknown): value is Marker {
   value.name = typeof value.name === 'string' ? value.name : '';
   value.notes = typeof value.notes === 'string' ? value.notes : '';
   return true;
+}
+
+function isRegion(value: unknown): value is Region {
+  if (!isObject(value)) return false;
+  if (
+    typeof value.id !== 'string' ||
+    typeof value.layerId !== 'string' ||
+    !isRegionType(value.type) ||
+    !Array.isArray(value.points) ||
+    value.points.length < 3 ||
+    !value.points.every((p) => Array.isArray(p) && p.length === 2)
+  ) {
+    return false;
+  }
+  value.name = typeof value.name === 'string' ? value.name : '';
+  value.color = typeof value.color === 'string' ? value.color : '#3498db';
+  value.notes = typeof value.notes === 'string' ? value.notes : '';
+  value.parentId = typeof value.parentId === 'string' ? value.parentId : null;
+  return true;
+}
+
+function parseRegionView(value: unknown): RegionView {
+  const view = createDefaultRegionView();
+  if (!isObject(value)) return view;
+  if (typeof value.showLabels === 'boolean') view.showLabels = value.showLabels;
+  if (Array.isArray(value.hiddenTypes)) view.hiddenTypes = value.hiddenTypes.filter(isRegionType);
+  return view;
 }
 
 function parseMarkerView(value: unknown): MarkerView {

@@ -58,15 +58,15 @@ Fase 6 — Cidades e marcadores
 [x] Notas em cada marcador (painel lateral)
 
 Fase 7 — Regiões e nações
-[ ] Ferramenta de região: desenhar contorno que fecha automaticamente
-[ ] Nome, tipo (continente, nação, região, etc.) e cor de preenchimento
-[ ] Hierarquia (região pertence a uma nação, nação a um continente)
-[ ] Clicar na região para abrir as notas no painel lateral
-[ ] Editor de notas (texto simples ou Markdown)
-[ ] Lista/árvore de regiões no painel lateral
-[ ] Mostrar/ocultar regiões por tipo
-[ ] Nome da região exibido no mapa
-[ ] Ferramenta para calcular distância (km) e definir quantos dias de viagem (SEMPRE falar quantos dias, horas e minutos serão necessários) (separado por vários meios de transporte; a pé, a cavalo / carroça, barco, voando...)
+[x] Ferramenta de região: desenhar contorno que fecha automaticamente
+[x] Nome, tipo (continente, nação, região, etc.) e cor de preenchimento
+[x] Hierarquia (região pertence a uma nação, nação a um continente)
+[x] Clicar na região para abrir as notas no painel lateral
+[x] Editor de notas (texto simples ou Markdown)
+[x] Lista/árvore de regiões no painel lateral
+[x] Mostrar/ocultar regiões por tipo
+[x] Nome da região exibido no mapa
+[x] Ferramenta para calcular distância (km) e definir quantos dias de viagem (SEMPRE falar quantos dias, horas e minutos serão necessários) (separado por vários meios de transporte; a pé, a cavalo / carroça, barco, voando...)
 
 Fase 8 — Encaixe e edição
 [ ] Snap: traço começa/termina grudado na ponta de outro traço próximo

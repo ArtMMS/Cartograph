@@ -4,7 +4,7 @@ export const BASE_LAYER_ID = 'base';
 export const DEFAULT_BASE_COLOR = '#ffffff';
 
 /** "draw" layers hold strokes; "image" layers hold one uploaded image; "markers" layers hold cities/POIs. */
-export type LayerKind = 'draw' | 'image' | 'markers';
+export type LayerKind = 'draw' | 'image' | 'markers' | 'regions';
 
 export interface Layer {
   id: string;
@@ -37,6 +37,11 @@ export function createLayer(name: string): Layer {
 /** Layer for city markers (created automatically with the first marker). */
 export function createMarkerLayer(name = 'Markers'): Layer {
   return { id: crypto.randomUUID(), kind: 'markers', name, visible: true, locked: false };
+}
+
+/** Layer for regions/nations (created automatically with the first region). */
+export function createRegionLayer(name = 'Regions'): Layer {
+  return { id: crypto.randomUUID(), kind: 'regions', name, visible: true, locked: false };
 }
 
 /** Image layer named after the file (without the extension). */

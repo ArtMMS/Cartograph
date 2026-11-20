@@ -19,6 +19,8 @@ import type { Viewport } from '../core/viewport';
 import { createDefaultMarkerView } from '../core/marker';
 import type { Drawing } from './drawing';
 import type { Markers } from './markers';
+import { createDefaultRegionView } from '../core/region';
+import type { Regions } from './regions';
 import { createFileBar } from './file-bar';
 import type { MapView } from './map-view';
 import { createStartMenu } from './start-menu';
@@ -33,6 +35,7 @@ export interface FileControllerOptions {
   mapView: MapView;
   drawing: Drawing;
   markers: Markers;
+  regions: Regions;
   history: History;
   viewport: Viewport;
 }
@@ -50,7 +53,7 @@ export interface FileController {
  * unsaved-changes tracking, autosave backup and the close-tab warning.
  */
 export function createFileController(options: FileControllerOptions): FileController {
-  const { root, mapView, drawing, markers, history, viewport } = options;
+  const { root, mapView, drawing, markers, regions, history, viewport } = options;
 
   let name = DEFAULT_NAME;
   let handle: FileSystemFileHandle | undefined;
@@ -101,6 +104,7 @@ export function createFileController(options: FileControllerOptions): FileContro
       drawing.strokes.revision +
       drawing.layers.revision +
       markers.store.revision +
+      regions.store.revision +
       mapScale.revision
     );
   }
@@ -130,6 +134,8 @@ export function createFileController(options: FileControllerOptions): FileContro
       strokes: drawing.strokes.all(),
       markers: markers.store.all(),
       markerView: markers.store.getView(),
+      regions: regions.store.all(),
+      regionView: regions.store.getView(),
     });
   }
 
@@ -138,6 +144,8 @@ export function createFileController(options: FileControllerOptions): FileContro
     drawing.loadState(file.layers, file.strokes, file.activeLayerId);
     markers.store.replaceAll(file.markers, file.markerView);
     markers.clearSelection();
+    regions.store.replaceAll(file.regions, file.regionView);
+    regions.clearSelection();
     history.clear();
     name = file.name || DEFAULT_NAME;
     markSaved();
@@ -163,6 +171,8 @@ export function createFileController(options: FileControllerOptions): FileContro
     drawing.loadState([createBaseLayer()], [], BASE_LAYER_ID);
     markers.store.replaceAll([], createDefaultMarkerView());
     markers.clearSelection();
+    regions.store.replaceAll([], createDefaultRegionView());
+    regions.clearSelection();
     history.clear();
     name = DEFAULT_NAME;
     handle = undefined;
@@ -251,6 +261,7 @@ export function createFileController(options: FileControllerOptions): FileContro
   drawing.strokes.onChange(scheduleAutosave);
   drawing.layers.onChange(scheduleAutosave);
   markers.store.onChange(scheduleAutosave);
+  regions.store.onChange(scheduleAutosave);
   mapScale.onChange(scheduleAutosave);
 
   // ---------- Close-tab warning ----------

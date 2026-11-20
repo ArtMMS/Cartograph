@@ -107,7 +107,7 @@ export function createMarkers(options: MarkersOptions): Markers {
   function renderDetails(): void {
     const marker = selectedId ? store.get(selectedId) : undefined;
     if (!marker) {
-      sidebar.setDetails(null);
+      sidebar.clearDetails(details.element);
       return;
     }
     const east = formatDistance(marker.x * mapScale.kmPerUnit);

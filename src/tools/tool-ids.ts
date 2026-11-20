@@ -1,4 +1,4 @@
-export type ToolId = 'pan' | 'select' | 'pencil' | 'eraser' | 'marker' | 'region';
+export type ToolId = 'pan' | 'select' | 'pencil' | 'eraser' | 'marker' | 'region' | 'measure';
 
 export interface ToolInfo {
   id: ToolId;
@@ -15,4 +15,5 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'eraser', label: 'Eraser', icon: '🧽', shortcut: 'E' },
   { id: 'marker', label: 'City marker', icon: '📍', shortcut: 'M' },
   { id: 'region', label: 'Region', icon: '⬠', shortcut: 'R' },
+  { id: 'measure', label: 'Distance', icon: '📏', shortcut: 'D' },
 ];
