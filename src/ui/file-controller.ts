@@ -1,5 +1,5 @@
 import { readAutosave, readAutosaveInfo, writeAutosave } from '../core/autosave';
-import { buildExportSvg, svgToPng } from '../core/export';
+import { buildExportSvg, exportSize, fullWorld, svgToPng, type ExportOptions } from '../core/export';
 import {
   hasFileSystemAccess,
   isCancel,
@@ -24,6 +24,7 @@ import type { Drawing } from './drawing';
 import type { Markers } from './markers';
 import { createDefaultRegionView } from '../core/region';
 import type { Regions } from './regions';
+import type { Texts } from './texts';
 import { createFileBar } from './file-bar';
 import type { MapView } from './map-view';
 import { createStartMenu } from './start-menu';
@@ -39,10 +40,13 @@ export interface FileControllerOptions {
   drawing: Drawing;
   markers: Markers;
   regions: Regions;
+  texts: Texts;
   history: History;
   viewport: Viewport;
   /** Whether the compass is on (default for "include compass" when exporting). */
   isCompassVisible: () => boolean;
+  /** Whether the hex grid is on (default for "include hex grid" when exporting). */
+  isHexVisible: () => boolean;
 }
 
 export interface FileController {
@@ -58,7 +62,7 @@ export interface FileController {
  * unsaved-changes tracking, autosave backup and the close-tab warning.
  */
 export function createFileController(options: FileControllerOptions): FileController {
-  const { root, mapView, drawing, markers, regions, history, viewport } = options;
+  const { root, mapView, drawing, markers, regions, texts, history, viewport } = options;
 
   let name = DEFAULT_NAME;
   let handle: FileSystemFileHandle | undefined;
@@ -112,6 +116,7 @@ export function createFileController(options: FileControllerOptions): FileContro
       drawing.layers.revision +
       markers.store.revision +
       regions.store.revision +
+      texts.store.revision +
       mapScale.revision
     );
   }
@@ -143,6 +148,7 @@ export function createFileController(options: FileControllerOptions): FileContro
       markerView: markers.store.getView(),
       regions: regions.store.all(),
       regionView: regions.store.getView(),
+      texts: texts.store.all(),
     });
   }
 
@@ -153,6 +159,8 @@ export function createFileController(options: FileControllerOptions): FileContro
     markers.clearSelection();
     regions.store.replaceAll(file.regions, file.regionView);
     regions.clearSelection();
+    texts.store.replaceAll(file.texts);
+    texts.clearSelection();
     history.clear();
     name = file.name || DEFAULT_NAME;
     markSaved();
@@ -180,6 +188,8 @@ export function createFileController(options: FileControllerOptions): FileContro
     markers.clearSelection();
     regions.store.replaceAll([], createDefaultRegionView());
     regions.clearSelection();
+    texts.store.replaceAll([]);
+    texts.clearSelection();
     history.clear();
     name = DEFAULT_NAME;
     handle = undefined;
@@ -226,23 +236,40 @@ export function createFileController(options: FileControllerOptions): FileContro
   /** Save as: asks for the format — map file (.json) or image (.png / .svg). */
   async function saveAs(): Promise<void> {
     if (busy) return;
-    const choice = await saveDialog.open({ compass: options.isCompassVisible() });
+    const choice = await saveDialog.open({
+      compass: options.isCompassVisible(),
+      hex: options.isHexVisible(),
+      title: name === DEFAULT_NAME ? '' : name,
+      visible: viewport.getVisibleBounds(),
+      preview: () => {
+        // Small picture of the whole map for the crop selector.
+        const svgText = buildExportSvg(mapView.svg, {
+          labels: true,
+          compass: false,
+          hex: false,
+          crop: fullWorld(),
+          longSide: 900,
+          border: 'none',
+          title: '',
+        });
+        return URL.createObjectURL(new Blob([svgText], { type: 'image/svg+xml' }));
+      },
+    });
     if (!choice) return;
     if (choice.format === 'json') return saveJsonAs();
-    return exportImage(choice.format, { labels: choice.labels, compass: choice.compass });
+    const { format, ...exportOptions } = choice;
+    return exportImage(format, exportOptions);
   }
 
-  async function exportImage(
-    format: 'png' | 'svg',
-    exportOptions: { labels: boolean; compass: boolean },
-  ): Promise<void> {
+  async function exportImage(format: 'png' | 'svg', exportOptions: ExportOptions): Promise<void> {
     if (busy) return;
     busy = true;
     try {
       const svgText = buildExportSvg(mapView.svg, exportOptions);
+      const { width, height } = exportSize(exportOptions);
       const blob =
         format === 'png'
-          ? await svgToPng(svgText)
+          ? await svgToPng(svgText, width, height)
           : new Blob([svgText], { type: 'image/svg+xml' });
       const saved = await saveBlobAs(
         blob,
@@ -306,6 +333,7 @@ export function createFileController(options: FileControllerOptions): FileContro
   drawing.layers.onChange(scheduleAutosave);
   markers.store.onChange(scheduleAutosave);
   regions.store.onChange(scheduleAutosave);
+  texts.store.onChange(scheduleAutosave);
   mapScale.onChange(scheduleAutosave);
 
   // ---------- Close-tab warning ----------

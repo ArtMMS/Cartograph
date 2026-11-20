@@ -2,6 +2,7 @@ import { getStroke } from 'perfect-freehand';
 import {
   buildAreaParts,
   buildSymbolParts,
+  isOutlineStyle,
   type DrawStyle,
   type ShapePart,
   type StrokeStyle,
@@ -68,7 +69,9 @@ export function cloneStroke(stroke: Stroke, dx: number, dy: number): Stroke {
 /** SVG paths for any style: the freehand outline for lines, symbols otherwise. */
 export function getStrokeParts(stroke: Stroke, finished = true): ShapePart[] {
   const style = stroke.style ?? 'line';
-  if (style === 'line') return [{ cls: 'line', d: getStrokePath(stroke, finished) }];
+  if (style !== 'area' && isOutlineStyle(style)) {
+    return [{ cls: 'line', d: getStrokePath(stroke, finished) }];
+  }
   if (style === 'area') {
     const outline = stroke.points.map((p) => [p[0], p[1]] as [number, number]);
     return buildAreaParts(stroke.element ?? 'line', outline, stroke.size, stroke.color, stroke.id);

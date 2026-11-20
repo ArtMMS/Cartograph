@@ -1,16 +1,32 @@
-export type MarkerType = 'capital' | 'city' | 'village' | 'poi';
+export type MarkerType =
+  | 'capital'
+  | 'city'
+  | 'village'
+  | 'poi'
+  | 'area'
+  | 'forest'
+  | 'mountain'
+  | 'water'
+  | 'road';
 
 export interface MarkerTypeInfo {
   id: MarkerType;
   name: string;
+  /** Short name for chips. */
+  short: string;
   icon: string;
 }
 
 export const MARKER_TYPES: readonly MarkerTypeInfo[] = [
-  { id: 'capital', name: 'Capital', icon: '👑' },
-  { id: 'city', name: 'City', icon: '🔴' },
-  { id: 'village', name: 'Village', icon: '⭕' },
-  { id: 'poi', name: 'Point of interest', icon: '🔷' },
+  { id: 'capital', name: 'Capital', short: 'Capital', icon: '👑' },
+  { id: 'city', name: 'City', short: 'City', icon: '🔴' },
+  { id: 'village', name: 'Village', short: 'Village', icon: '🟠' },
+  { id: 'poi', name: 'Point of interest', short: 'POI', icon: '🔷' },
+  { id: 'area', name: 'Area (desert, plains, swamp…)', short: 'Area', icon: '🏜️' },
+  { id: 'forest', name: 'Forest', short: 'Forest', icon: '🌲' },
+  { id: 'mountain', name: 'Mountains & hills', short: 'Mountain', icon: '⛰️' },
+  { id: 'water', name: 'Water (river, lake, sea)', short: 'Water', icon: '💧' },
+  { id: 'road', name: 'Road', short: 'Road', icon: '🛤️' },
 ];
 
 export interface Marker {

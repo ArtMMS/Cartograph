@@ -52,6 +52,26 @@ export function createMapView(): MapView {
     height: WORLD_HEIGHT,
   });
 
+  // Ocean waves over the Base color.
+  const wavePattern = createSvg('pattern', {
+    id: 'ocean-waves',
+    patternUnits: 'userSpaceOnUse',
+    width: 140,
+    height: 90,
+  });
+  wavePattern.innerHTML =
+    '<path class="ocean-wave" d="M10,20 q8,-6 16,0 t16,0 M80,12 q6,-5 12,0 t12,0 ' +
+    'M50,55 q8,-6 16,0 t16,0 M110,70 q6,-5 12,0 t12,0 M15,78 q6,-5 12,0"/>';
+  defs.append(wavePattern);
+  const waves = createSvg('rect', {
+    class: 'map-view__waves',
+    x: 0,
+    y: 0,
+    width: WORLD_WIDTH,
+    height: WORLD_HEIGHT,
+    fill: 'url(#ocean-waves)',
+  });
+
   const layers = {
     background: createSvg('g', { 'data-layer': 'background' }),
     drawing: createSvg('g', { 'data-layer': 'drawing' }),
@@ -65,6 +85,7 @@ export function createMapView(): MapView {
   svg.append(
     defs,
     paper,
+    waves,
     layers.background,
     layers.regions,
     layers.drawing,
@@ -131,6 +152,7 @@ export function createMapView(): MapView {
 
   function setPaperColor(color: string | null): void {
     paper.style.fill = color ?? 'transparent';
+    waves.style.display = color ? '' : 'none';
   }
 
   return {

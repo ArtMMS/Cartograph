@@ -14,6 +14,7 @@ import {
   type RegionView,
 } from './region';
 import type { Stroke, StrokePoint } from './stroke';
+import { isMapText, normalizeText, type MapText } from './text';
 import { isStrokeStyle } from './stroke-style';
 
 export const MAP_FILE_VERSION = 1;
@@ -40,6 +41,8 @@ export interface MapFile {
   /** Continents, nations, regions, areas. */
   regions: Region[];
   regionView: RegionView;
+  /** Free texts. */
+  texts: MapText[];
 }
 
 export interface MapState {
@@ -52,6 +55,7 @@ export interface MapState {
   markerView: MarkerView;
   regions: readonly Region[];
   regionView: RegionView;
+  texts: readonly MapText[];
 }
 
 /** Turns the current map into a MapFile object. */
@@ -69,6 +73,7 @@ export function toMapFile(state: MapState): MapFile {
     markerView: { ...state.markerView, hiddenTypes: [...state.markerView.hiddenTypes] },
     regions: state.regions.map((r) => ({ ...r, points: r.points.map((p) => [round(p[0]), round(p[1])]) })),
     regionView: { ...state.regionView, hiddenTypes: [...state.regionView.hiddenTypes] },
+    texts: state.texts.map((t) => ({ ...t, x: round(t.x), y: round(t.y) })),
   };
 }
 
@@ -114,6 +119,10 @@ export function parseMapFile(text: string): MapFile {
   for (const r of regions) if (r.parentId && !regionIds.has(r.parentId)) r.parentId = null;
   const regionView = parseRegionView(data.regionView);
 
+  const texts = (Array.isArray(data.texts) ? data.texts.filter(isMapText) : [])
+    .filter((t) => layerIds.has(t.layerId))
+    .map(normalizeText);
+
   return {
     app: MAP_FILE_APP,
     version: MAP_FILE_VERSION,
@@ -121,6 +130,7 @@ export function parseMapFile(text: string): MapFile {
     markerView,
     regions,
     regionView,
+    texts,
     name: typeof data.name === 'string' ? data.name : 'Untitled map',
     savedAt: typeof data.savedAt === 'string' ? data.savedAt : '',
     scale: isScalePresetId(data.scale) ? data.scale : DEFAULT_SCALE_PRESET,
@@ -139,7 +149,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 function isLayer(value: unknown): value is Layer {
   if (!isObject(value)) return false;
   if (typeof value.id !== 'string' || typeof value.name !== 'string') return false;
-  if (!['draw', 'image', 'markers', 'regions'].includes(String(value.kind))) return false;
+  if (!['draw', 'image', 'markers', 'regions', 'texts'].includes(String(value.kind))) return false;
   if (value.kind === 'image' && !isImageFile(value.image)) return false;
   value.visible = value.visible !== false;
   value.locked = value.locked === true;

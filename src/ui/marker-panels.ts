@@ -17,7 +17,8 @@ export function createMarkerTypePicker(onPick: (type: MarkerType) => void): Mark
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'marker-types__button';
-    button.innerHTML = `<span>${t.icon}</span><span>${t.name}</span>`;
+    button.innerHTML = `<span>${t.icon}</span><span>${t.short}</span>`;
+    button.title = t.name;
     button.addEventListener('click', () => onPick(t.id));
     buttons.set(t.id, button);
     element.append(button);
@@ -76,7 +77,7 @@ export function createMarkerViewPanel(handlers: {
       const button = buttons.get(t.id)!;
       const hidden = view.hiddenTypes.includes(t.id);
       button.classList.toggle('is-off', hidden);
-      button.textContent = `${t.icon} ${t.id === 'poi' ? 'POI' : t.name} ${counts.get(t.id) ?? 0}`;
+      button.textContent = `${t.icon} ${t.short} ${counts.get(t.id) ?? 0}`;
       button.title = `${hidden ? 'Show' : 'Hide'} ${t.name.toLowerCase()} markers`;
     }
   }

@@ -1,10 +1,11 @@
 import { createBackground, type BackgroundImage, type LoadedImage } from './background';
 
 export const BASE_LAYER_ID = 'base';
-export const DEFAULT_BASE_COLOR = '#ffffff';
+/** The Base layer is the ocean. */
+export const DEFAULT_BASE_COLOR = '#a8cfe6';
 
 /** "draw" layers hold strokes; "image" layers hold one uploaded image; "markers" layers hold cities/POIs. */
-export type LayerKind = 'draw' | 'image' | 'markers' | 'regions';
+export type LayerKind = 'draw' | 'image' | 'markers' | 'regions' | 'texts';
 
 export interface Layer {
   id: string;
@@ -42,6 +43,11 @@ export function createMarkerLayer(name = 'Markers'): Layer {
 /** Layer for regions/nations (created automatically with the first region). */
 export function createRegionLayer(name = 'Regions'): Layer {
   return { id: crypto.randomUUID(), kind: 'regions', name, visible: true, locked: false };
+}
+
+/** Layer for free texts (created automatically with the first text). */
+export function createTextLayer(name = 'Texts'): Layer {
+  return { id: crypto.randomUUID(), kind: 'texts', name, visible: true, locked: false };
 }
 
 /** Image layer named after the file (without the extension). */

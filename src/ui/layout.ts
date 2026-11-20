@@ -29,6 +29,9 @@ import { createToolbar, type Toolbar } from './toolbar';
 import { createCompassOverlay, type CompassOverlay } from './compass';
 import { createInfoBox } from './info-box';
 import { createSearchBox } from './search';
+import { createTexts } from './texts';
+import { createTerrainTool } from './terrain';
+import { createViewPanel } from './view-panel';
 import { getMarkerType } from '../core/marker';
 import { getRegionType } from '../core/region';
 
@@ -268,6 +271,26 @@ export function createLayout(root: HTMLElement): AppLayout {
 
   // ---------- Files ----------
 
+  // ---------- Free texts & terrain generator ----------
+
+  const textController = createTexts({
+    mapView,
+    viewport,
+    sidebar,
+    history,
+    drawing,
+    markers: markerController.store,
+    getActiveTool: () => activeTool,
+  });
+
+  const terrainTool = createTerrainTool({
+    mapView,
+    viewport,
+    sidebar,
+    drawing,
+    getActiveTool: () => activeTool,
+  });
+
   // ---------- Compass rose & scale ----------
 
   compass = createCompassOverlay(mapView.element);
@@ -277,6 +300,10 @@ export function createLayout(root: HTMLElement): AppLayout {
   // ---------- View mode (read-only: browse and read notes) ----------
 
   const infoBox = createInfoBox(mapView.element, () => clearViewed());
+  const viewPanel = createViewPanel(mapView.element, mapView.svg, () => {
+    // Hiding regions closes an open region box.
+    if (!viewPanel?.regionsVisible()) regionController.highlight(null);
+  });
 
   function clearViewed(): void {
     regionController.highlight(null);
@@ -314,23 +341,36 @@ export function createLayout(root: HTMLElement): AppLayout {
   }
 
   // A click (not a drag) in View mode opens the notes of what's under the mouse.
-  let viewClick: { x: number; y: number } | null = null;
-  mapView.svg.addEventListener('pointerdown', (e) => {
-    viewClick = viewMode && e.button === 0 ? { x: e.clientX, y: e.clientY } : null;
-  });
+  // The element under the mouse is read on pointerdown: while panning the map
+  // captures the pointer, so pointerup always reports the <svg> itself.
+  let viewClick: { x: number; y: number; target: EventTarget | null } | null = null;
+  mapView.svg.addEventListener(
+    'pointerdown',
+    (e) => {
+      viewClick = viewMode && e.button === 0 ? { x: e.clientX, y: e.clientY, target: e.target } : null;
+    },
+    { capture: true },
+  );
   mapView.svg.addEventListener('pointerup', (e) => {
     if (!viewMode || !viewClick) return;
     const moved = Math.hypot(e.clientX - viewClick.x, e.clientY - viewClick.y);
+    const down = { target: viewClick.target } as unknown as Event;
     viewClick = null;
     if (moved > 4) return;
 
-    const marker = markerController.markerFromEvent(e);
+    const marker = markerController.markerFromEvent(down);
     if (marker) {
       showMarkerInfo(marker.id);
       return;
     }
+    // Texts linked to a marker open that marker's notes.
+    const text = textController.textFromEvent(down);
+    if (text?.linkedMarkerId && markerController.store.get(text.linkedMarkerId)) {
+      showMarkerInfo(text.linkedMarkerId);
+      return;
+    }
     const p = viewport.screenToWorld(e.clientX, e.clientY);
-    const region = regionController.findVisibleAt(p.x, p.y);
+    const region = viewPanel.regionsVisible() ? regionController.findVisibleAt(p.x, p.y) : null;
     if (region) {
       showRegionInfo(region.id);
     } else {
@@ -346,9 +386,11 @@ export function createLayout(root: HTMLElement): AppLayout {
     drawing.clearSelection();
     markerController.clearSelection();
     regionController.clearSelection();
+    textController.clearSelection();
     measure?.clear();
     infoBox.hide();
     clearViewed();
+    viewPanel.setActive(on);
     selectTool('pan');
     sidebar.setStatus(on ? 'View mode' : 'Edit mode');
   }
@@ -376,9 +418,11 @@ export function createLayout(root: HTMLElement): AppLayout {
     drawing,
     markers: markerController,
     regions: regionController,
+    texts: textController,
     history,
     viewport,
     isCompassVisible: () => compass?.isVisible() ?? false,
+    isHexVisible: () => mapView.hexGrid.isVisible(),
   });
 
   // ---------- Undo / redo & shortcuts ----------
@@ -388,6 +432,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     drawing.refreshSelection();
     markerController.refreshSelection();
     regionController.refreshSelection();
+    textController.refreshSelection();
     sidebar.setStatus(command ? `Undo: ${command.label}` : 'Nothing to undo');
   }
 
@@ -396,6 +441,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     drawing.refreshSelection();
     markerController.refreshSelection();
     regionController.refreshSelection();
+    textController.refreshSelection();
     sidebar.setStatus(command ? `Redo: ${command.label}` : 'Nothing to redo');
   }
 
@@ -405,6 +451,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     onRedo: redo,
     onDelete: () => {
       if (markerController.hasSelection()) markerController.deleteSelection();
+      else if (textController.hasSelection()) textController.deleteSelection();
       else if (regionController.hasSelection()) regionController.deleteSelection();
       else drawing.deleteSelection();
     },
@@ -414,6 +461,7 @@ export function createLayout(root: HTMLElement): AppLayout {
       drawing.clearSelection();
       markerController.clearSelection();
       regionController.clearSelection();
+      textController.clearSelection();
       if (activeTool === 'measure') measure?.clear();
     },
     onSave: files.save,
@@ -421,6 +469,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     onOpen: files.open,
     onDuplicate: () => {
       if (markerController.hasSelection()) markerController.duplicateSelection();
+      else if (textController.hasSelection()) textController.duplicateSelection();
       else if (regionController.hasSelection()) regionController.duplicateSelection();
       else drawing.duplicateSelection();
     },
@@ -437,6 +486,8 @@ export function createLayout(root: HTMLElement): AppLayout {
     drawing.onToolChange(id);
     markerController.onToolChange(id);
     regionController.onToolChange(id);
+    textController.onToolChange(id);
+    terrainTool.onToolChange(id);
     sidebar.setTravelVisible(id === 'measure');
     if (id !== 'pan' && transformMode) setTransformMode(false);
     viewport.refreshCursor();

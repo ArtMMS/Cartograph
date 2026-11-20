@@ -264,7 +264,33 @@ body {
 
 /* Filled areas (closed shapes) */
 .part--area-fill--land {
-  fill: #f1e3c2;
+  fill: #d4e2aa;
+}
+
+.part--area-fill--sand {
+  fill: #f0d999;
+}
+
+.part--area-fill--snow {
+  fill: #f6f9fc;
+}
+
+.part--flake {
+  fill: none;
+  stroke: #a9c3dc !important;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.map-view__waves {
+  pointer-events: none;
+}
+
+.ocean-wave {
+  fill: none;
+  stroke: rgba(30, 80, 120, 0.28);
+  stroke-width: 1.4;
+  stroke-linecap: round;
 }
 
 .part--area-fill--water {
@@ -1134,6 +1160,65 @@ body {
   fill: transparent;
 }
 
+.marker__symbol {
+  stroke: #2b1a0e;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+.marker__symbol--area {
+  fill: rgba(232, 200, 120, 0.6);
+  stroke-dasharray: 3 2;
+}
+
+.marker__symbol--forest {
+  fill: #2e7d4f;
+}
+
+.marker__symbol--mountain {
+  fill: #9a6a3c;
+}
+
+.marker__symbol--snow {
+  fill: #ffffff;
+  stroke-width: 0.8;
+}
+
+.marker__symbol--water {
+  fill: #4a9ad8;
+}
+
+.marker__symbol--post {
+  fill: #6b4a2b;
+  stroke-width: 0.8;
+}
+
+.marker__symbol--sign {
+  fill: #e8c890;
+}
+
+/* Geographic names: italic, colored like the element. */
+.marker--area .marker__label,
+.marker--forest .marker__label,
+.marker--mountain .marker__label,
+.marker--water .marker__label,
+.marker--road .marker__label {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.marker--forest .marker__label {
+  fill: #1f4d2e;
+}
+
+.marker--water .marker__label {
+  fill: #1f5f96;
+}
+
+.marker--mountain .marker__label {
+  fill: #5a3a1e;
+}
+
 .marker__ring {
   fill: none;
   stroke: transparent;
@@ -1171,7 +1256,12 @@ body {
 .hide-marker-capital .marker--capital,
 .hide-marker-city .marker--city,
 .hide-marker-village .marker--village,
-.hide-marker-poi .marker--poi {
+.hide-marker-poi .marker--poi,
+.hide-marker-area .marker--area,
+.hide-marker-forest .marker--forest,
+.hide-marker-mountain .marker--mountain,
+.hide-marker-water .marker--water,
+.hide-marker-road .marker--road {
   display: none;
 }
 
@@ -1830,10 +1920,74 @@ body {
   display: none;
 }
 
-.app.is-view-mode .file-bar__button[data-action='new'],
-.app.is-view-mode .file-bar__button[data-action='save'],
-.app.is-view-mode .file-bar__button[data-action='save-as'] {
+.app.is-view-mode .file-bar__button[data-action='new'] {
   display: none;
+}
+
+/* View mode: names and texts can be clicked too. */
+.app.is-view-mode .marker__label,
+.app.is-view-mode .map-text.has-link {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.view-hide-regions .region,
+.view-hide-regions .region-label,
+.view-hide-marker-capital .marker--capital,
+.view-hide-marker-city .marker--city,
+.view-hide-marker-village .marker--village,
+.view-hide-marker-poi .marker--poi,
+.view-hide-marker-area .marker--area,
+.view-hide-marker-forest .marker--forest,
+.view-hide-marker-mountain .marker--mountain,
+.view-hide-marker-water .marker--water,
+.view-hide-marker-road .marker--road {
+  display: none;
+}
+
+.view-panel {
+  position: absolute;
+  top: 60px;
+  left: 12px;
+  z-index: 5;
+  width: 260px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.view-panel[hidden] {
+  display: none;
+}
+
+.view-panel__title {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.view-panel__regions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.view-panel__regions input {
+  accent-color: var(--accent);
+}
+
+.view-panel__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .app.is-view-mode .map-view__svg,
@@ -2024,4 +2178,223 @@ body {
 
 .measure.is-finished .measure__line {
   stroke-dasharray: none;
+}
+
+/* ---------- Free texts ---------- */
+
+.map-text {
+  user-select: none;
+}
+
+.map-view[data-tool='select'] .map-text,
+.map-view[data-tool='text'] .map-text {
+  cursor: move;
+}
+
+.map-view[data-tool='text'] .map-view__svg {
+  cursor: text;
+}
+
+.map-text.is-selected {
+  filter: drop-shadow(0 0 2px #2f80ed) drop-shadow(0 0 2px #2f80ed);
+}
+
+.text-panel__row {
+  display: flex;
+  gap: 6px;
+}
+
+.text-panel__row select {
+  flex: 1;
+}
+
+.text-panel__toggle {
+  width: 34px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.text-panel__toggle.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.text-panel .field {
+  margin-bottom: 0;
+}
+
+.text-panel__mini {
+  width: auto;
+  margin-left: auto;
+}
+
+.text-panel textarea {
+  min-height: 52px;
+}
+
+/* ---------- Terrain generator ---------- */
+
+.terrain-box {
+  fill: rgba(63, 90, 42, 0.12);
+  stroke: #3f5a2a;
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.map-view[data-tool='terrain'] .map-view__svg {
+  cursor: crosshair;
+}
+
+/* ---------- Save as: image options ---------- */
+
+.save-dialog__card {
+  width: min(860px, 100%);
+}
+
+.save-dialog__formats {
+  flex-direction: row;
+}
+
+.save-dialog__formats .save-dialog__format {
+  flex: 1;
+}
+
+.save-dialog__image {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.save-dialog__image.is-disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.crop {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: #ddd;
+  user-select: none;
+}
+
+.crop__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.crop__box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #2f80ed;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  cursor: move;
+  touch-action: none;
+}
+
+.crop__handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: 2px solid #2f80ed;
+  border-radius: 2px;
+}
+
+.crop__handle[data-corner='nw'] { left: -7px; top: -7px; cursor: nwse-resize; }
+.crop__handle[data-corner='ne'] { right: -7px; top: -7px; cursor: nesw-resize; }
+.crop__handle[data-corner='sw'] { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.crop__handle[data-corner='se'] { right: -7px; bottom: -7px; cursor: nwse-resize; }
+
+.save-dialog__crop-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.save-dialog__hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.save-dialog__size {
+  margin: 8px 0 0;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.save-dialog__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.save-dialog__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.save-dialog__segmented {
+  display: flex;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.save-dialog__segmented label {
+  flex: 1;
+}
+
+.save-dialog__segmented input {
+  display: none;
+}
+
+.save-dialog__segmented span {
+  display: block;
+  padding: 5px 0;
+  text-align: center;
+  font-size: 12px;
+  background: var(--paper);
+  cursor: pointer;
+}
+
+.save-dialog__segmented input:checked + span {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.save-dialog__title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.save-dialog__title input {
+  padding: 5px 8px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+}
+
+.save-dialog__title.is-disabled {
+  opacity: 0.45;
 }

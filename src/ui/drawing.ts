@@ -2,6 +2,7 @@ import type { History } from '../core/history';
 import type { LoadedImage } from '../core/background';
 import {
   BASE_LAYER_ID,
+  DEFAULT_BASE_COLOR,
   createImageLayer,
   createLayer,
   isLayerEditable,
@@ -9,10 +10,11 @@ import {
 } from '../core/layer';
 import { LayerStore, type LayerPatch } from '../core/layer-store';
 import { mapScale } from '../core/map-scale';
-import type { PalettePreset } from '../core/palette';
+import { PALETTE, type PalettePreset } from '../core/palette';
 import {
   cloneStroke,
   createArea,
+  createStroke,
   createDefaultBrush,
   type Brush,
   type Stroke,
@@ -62,6 +64,12 @@ export interface Drawing {
   /** Call when the active tool changes. */
   onToolChange(id: ToolId): void;
   deleteSelection(): void;
+  /**
+   * Adds generated coastlines (closed outlines) as Coast strokes with their land
+   * fill, on the active drawing layer, as one undo step. Returns how many were
+   * added, or a message if the active layer can't be drawn on.
+   */
+  addGeneratedLand(outlines: StrokePoint[][]): number | string;
   /** Copies the selected stroke (Ctrl+D). */
   duplicateSelection(): void;
   clearSelection(): void;
@@ -375,7 +383,7 @@ export function createDrawing(options: DrawingOptions): Drawing {
   function setBaseColor(color: string): void {
     const base = layers.get(BASE_LAYER_ID);
     if (!base) return;
-    pushMergeable('Paper color', 'base-color', base.color ?? '#ffffff', color, (value) =>
+    pushMergeable('Paper color', 'base-color', base.color ?? DEFAULT_BASE_COLOR, color, (value) =>
       layers.update(BASE_LAYER_ID, { color: value }),
     );
   }
@@ -496,7 +504,7 @@ export function createDrawing(options: DrawingOptions): Drawing {
     layer.sync(strokes.all(), layers.all());
 
     const base = layers.get(BASE_LAYER_ID);
-    mapView.setPaperColor(base?.visible ? (base.color ?? '#ffffff') : null);
+    mapView.setPaperColor(base?.visible ? (base.color ?? DEFAULT_BASE_COLOR) : null);
 
     const counts = new Map<string, number>();
     for (const s of strokes.all()) counts.set(s.layerId, (counts.get(s.layerId) ?? 0) + 1);
@@ -521,7 +529,12 @@ export function createDrawing(options: DrawingOptions): Drawing {
     getTarget: () => {
       const active: Layer = layers.getActive();
       if (active.kind !== 'draw') {
-        const kinds = { image: 'an image', markers: 'a marker', regions: 'a region' } as const;
+        const kinds = {
+          image: 'an image',
+          markers: 'a marker',
+          regions: 'a region',
+          texts: 'a text',
+        } as const;
         const kind = kinds[active.kind];
         return `"${active.name}" is ${kind} layer — select a drawing layer to draw`;
       }
@@ -600,6 +613,36 @@ export function createDrawing(options: DrawingOptions): Drawing {
     return best;
   }
 
+  function addGeneratedLand(outlines: StrokePoint[][]): number | string {
+    const active = layers.getActive();
+    if (active.kind !== 'draw') return `"${active.name}" isn't a drawing layer — select one to generate land`;
+    if (!active.visible || active.locked) return `"${active.name}" is hidden or locked`;
+
+    const coast = PALETTE.find((p) => p.style === 'coast') ?? PALETTE[0];
+    const added: Stroke[] = [];
+    for (const outline of outlines) {
+      if (outline.length < 3) continue;
+      // Fill first (under), then the coastline on top.
+      added.push(createArea(active.id, outline, coast.color, coast.size, 'coast'));
+      const line = createStroke({ color: coast.color, size: coast.size, style: 'coast' }, active.id, true);
+      line.points = [...outline, outline[0]];
+      added.push(line);
+    }
+    if (added.length === 0) return 'Nothing generated';
+
+    for (const s of added) strokes.insert(s);
+    history.push({
+      label: 'Generate land',
+      undo: () => {
+        for (const s of added) strokes.remove(s.id);
+      },
+      redo: () => {
+        for (const s of added) strokes.insert(s);
+      },
+    });
+    return added.length / 2;
+  }
+
   /** Copies the selected stroke a little to the side and selects the copy. */
   function duplicateSelection(): void {
     const stroke = selectedId ? strokes.get(selectedId) : undefined;
@@ -669,6 +712,7 @@ export function createDrawing(options: DrawingOptions): Drawing {
     onToolChange,
     deleteSelection,
     duplicateSelection,
+    addGeneratedLand,
     clearSelection: () => select(null),
     hasSelection: () => selectedId !== null,
     refreshSelection,

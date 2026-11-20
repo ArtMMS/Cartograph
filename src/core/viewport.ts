@@ -104,6 +104,11 @@ export class Viewport {
     this.apply();
   }
 
+  /** The part of the world currently on screen (world units). */
+  getVisibleBounds(): { x: number; y: number; width: number; height: number } {
+    return { x: this.x, y: this.y, width: this.width / this.scale, height: this.height / this.scale };
+  }
+
   /** Centers the view on a world point, optionally changing the zoom. */
   centerOn(x: number, y: number, scale = this.scale): void {
     if (this.width === 0 || this.height === 0) return;

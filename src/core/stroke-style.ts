@@ -9,6 +9,8 @@ import type { StrokePoint } from './stroke';
  */
 export type StrokeStyle =
   | 'line'
+  | 'coast'
+  | 'snow'
   | 'mountains'
   | 'hills'
   | 'forest'
@@ -22,6 +24,16 @@ export type StrokeStyle =
 /** Styles the user can pick (everything except "area", which is automatic). */
 export type DrawStyle = Exclude<StrokeStyle, 'area'>;
 
+/**
+ * Styles drawn as a plain freehand line. Coast, desert and snow are lines too,
+ * but when closed they fill with land, sand or snow.
+ */
+export const OUTLINE_STYLES: readonly DrawStyle[] = ['line', 'coast', 'desert', 'snow'];
+
+export function isOutlineStyle(style: DrawStyle): style is 'line' | 'coast' | 'desert' | 'snow' {
+  return OUTLINE_STYLES.includes(style);
+}
+
 export interface StrokeStyleInfo {
   id: DrawStyle;
   name: string;
@@ -30,12 +42,14 @@ export interface StrokeStyleInfo {
 
 export const STROKE_STYLES: readonly StrokeStyleInfo[] = [
   { id: 'line', name: 'Line', icon: '〰️' },
+  { id: 'coast', name: 'Coast (fills with land)', icon: '🏝️' },
+  { id: 'desert', name: 'Desert (fills with sand)', icon: '🏜️' },
+  { id: 'snow', name: 'Snow (fills with snow)', icon: '❄️' },
   { id: 'mountains', name: 'Mountains', icon: '⛰️' },
   { id: 'hills', name: 'Hills', icon: '🌄' },
   { id: 'forest', name: 'Forest (pines)', icon: '🌲' },
   { id: 'grove', name: 'Woods (round trees)', icon: '🌳' },
   { id: 'swamp', name: 'Swamp', icon: '🌾' },
-  { id: 'desert', name: 'Desert dots', icon: '🏜️' },
   { id: 'waves', name: 'Waves', icon: '🌊' },
   { id: 'border', name: 'Border (dashed)', icon: '┅' },
 ];
@@ -148,13 +162,16 @@ interface SymbolSpec {
   layered: boolean;
 }
 
-const SYMBOLS: Record<Exclude<DrawStyle, 'line' | 'border'>, SymbolSpec> = {
+type SymbolStyle = Exclude<DrawStyle, 'line' | 'coast' | 'snow' | 'border'>;
+
+const SYMBOLS: Record<SymbolStyle, SymbolSpec> = {
   mountains: { glyph: mountain, along: 3, spread: 0, grid: [5.5, 3.6], layered: true },
   hills: { glyph: hill, along: 3.4, spread: 0, grid: [6, 3.8], layered: false },
   forest: { glyph: pine, along: 1.1, spread: 2.2, grid: [1.9, 1.6], layered: true },
   grove: { glyph: roundTree, along: 1.5, spread: 2, grid: [2.8, 2.4], layered: true },
   swamp: { glyph: tuft, along: 1.6, spread: 2, grid: [3.2, 2.5], layered: false },
-  desert: { glyph: dots, along: 1, spread: 4, grid: [1.6, 1.4], layered: false },
+  // Desert as an area: sparse sand dots (as a line, desert is drawn as an outline).
+  desert: { glyph: dots, along: 1, spread: 4, grid: [5, 4], layered: false },
   waves: { glyph: wave, along: 4, spread: 2.4, grid: [5, 2.6], layered: false },
 };
 
@@ -162,7 +179,7 @@ const SYMBOLS: Record<Exclude<DrawStyle, 'line' | 'border'>, SymbolSpec> = {
 
 /** Parts of a symbol line (mountains, forest…) or dashed border. */
 export function buildSymbolParts(
-  style: Exclude<DrawStyle, 'line'>,
+  style: Exclude<DrawStyle, 'line' | 'coast' | 'desert' | 'snow'>,
   points: readonly StrokePoint[],
   size: number,
   seed: string,
@@ -201,7 +218,17 @@ export function buildAreaParts(
   seed: string,
 ): ShapePart[] {
   const parts: ShapePart[] = [{ cls: `area-fill--${areaKind(element, color)}`, d: smoothClosed(outline) }];
-  if (element === 'line' || element === 'border') return parts;
+
+  // Snow: a few small flakes.
+  if (element === 'snow') {
+    const rand = seededRandom(seed);
+    const flakes = scatter(outline, size * 7, size * 5, rand).map(([x, y]) => ({
+      cls: 'flake',
+      d: snowflake(x, y, size * 0.5),
+    }));
+    return parts.concat(mergeParts(flakes));
+  }
+  if (element === 'line' || element === 'border' || element === 'coast') return parts;
 
   const spec = SYMBOLS[element];
   const rand = seededRandom(seed);
@@ -210,11 +237,32 @@ export function buildAreaParts(
   return parts.concat(placeGlyphs(spec, positions, size, rand));
 }
 
-/** What a closed area is filled with: land (coast), water (blue lines/waves) or a tint. */
-export function areaKind(element: DrawStyle, color: string): 'land' | 'water' | 'tint' {
+/** What a closed area is filled with. */
+export function areaKind(
+  element: DrawStyle,
+  color: string,
+): 'land' | 'sand' | 'snow' | 'water' | 'tint' {
+  if (element === 'coast') return 'land';
+  if (element === 'desert') return 'sand';
+  if (element === 'snow') return 'snow';
   if (element === 'waves') return 'water';
-  if (element === 'line') return isBluish(color) ? 'water' : 'land';
+  if (element === 'line') return isBluish(color) ? 'water' : 'tint';
   return 'tint';
+}
+
+function mergeParts(parts: ShapePart[]): ShapePart[] {
+  if (parts.length === 0) return [];
+  return [{ cls: parts[0].cls, d: parts.map((p) => p.d).join(' ') }];
+}
+
+/** Six-armed flake. */
+function snowflake(x: number, y: number, r: number): string {
+  let d = '';
+  for (let i = 0; i < 3; i++) {
+    const a = (i * Math.PI) / 3;
+    d += `M${f(x - Math.cos(a) * r)},${f(y - Math.sin(a) * r)} L${f(x + Math.cos(a) * r)},${f(y + Math.sin(a) * r)} `;
+  }
+  return d;
 }
 
 function placeGlyphs(

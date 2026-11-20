@@ -8,6 +8,8 @@ export interface Sidebar {
   markerToolSlot: HTMLElement;
   /** Container for the "new region" type picker. */
   regionToolSlot: HTMLElement;
+  /** Container for the terrain generator options. */
+  terrainSlot: HTMLElement;
   /** Container for the distance / travel time results. */
   travelSlot: HTMLElement;
   /** Container for the regions tree. */
@@ -26,6 +28,8 @@ export interface Sidebar {
   setMarkerToolVisible(visible: boolean): void;
   /** Shows/hides the New region section (only with the Region tool). */
   setRegionToolVisible(visible: boolean): void;
+  /** Shows/hides the Generate terrain section (only with the Terrain tool). */
+  setTerrainVisible(visible: boolean): void;
   /** Shows/hides the Distance section (only with the Distance tool). */
   setTravelVisible(visible: boolean): void;
   /** Shows an element in the Details section (null = empty message). */
@@ -44,6 +48,7 @@ export function createSidebar(): Sidebar {
   const selection = createSection('Selected stroke');
   const markerTool = createSection('New marker');
   const regionTool = createSection('New region');
+  const terrain = createSection('Generate terrain');
   const travel = createSection('Distance & travel time');
   const regions = createSection('Regions');
   const layers = createSection('Layers');
@@ -65,6 +70,7 @@ export function createSidebar(): Sidebar {
     selection.section,
     markerTool.section,
     regionTool.section,
+    terrain.section,
     travel.section,
     details.section,
     layers.section,
@@ -90,6 +96,10 @@ export function createSidebar(): Sidebar {
     regionTool.section.hidden = !visible;
   }
 
+  function setTerrainVisible(visible: boolean): void {
+    terrain.section.hidden = !visible;
+  }
+
   function setTravelVisible(visible: boolean): void {
     travel.section.hidden = !visible;
   }
@@ -113,6 +123,7 @@ export function createSidebar(): Sidebar {
   setSelectionVisible(false);
   setMarkerToolVisible(false);
   setRegionToolVisible(false);
+  setTerrainVisible(false);
   setTravelVisible(false);
   setDetails(null);
 
@@ -122,6 +133,7 @@ export function createSidebar(): Sidebar {
     selectionSlot: selection.body,
     markerToolSlot: markerTool.body,
     regionToolSlot: regionTool.body,
+    terrainSlot: terrain.body,
     travelSlot: travel.body,
     regionsSlot: regions.body,
     layersSlot: layers.body,
@@ -131,6 +143,7 @@ export function createSidebar(): Sidebar {
     setSelectionVisible,
     setMarkerToolVisible,
     setRegionToolVisible,
+    setTerrainVisible,
     setTravelVisible,
     setDetails,
     clearDetails,

@@ -87,5 +87,3 @@ Fase 9 — Extras
 
 Ideias futuras
 [ ] Múltiplos mapas ligados (clicar em uma cidade abre o mapa dela)
-[ ] Gerar terreno automaticamente (para continentes e ilhas (ilhas sozinhas ou arquipélagos))
-    [ ] Gerar elementos geográficos automaticamente; mas fazer de forma consistente e que tenha algum sentido com montanhas, florestas, pântanos e etc...
