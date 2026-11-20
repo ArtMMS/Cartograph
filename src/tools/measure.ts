@@ -14,13 +14,15 @@ export interface MeasureOptions {
 
 export interface Measure {
   clear(): void;
-  /** Keeps dots and label the same size on screen. */
+  /** Keeps dots the same size on screen. */
   setZoom(scale: number): void;
 }
 
 /**
- * Distance tool: click to add points along a route, the line follows the
- * mouse; double-click (or Enter) finishes; Esc clears; the next click starts over.
+ * Distance tool:
+ * - left-click adds points along a route (the line follows the mouse)
+ * - right-click (or double-click / Enter) stops the ruler where it is
+ * - the stopped ruler stays on the map, showing the distance, until Esc
  */
 export function attachMeasure(options: MeasureOptions): Measure {
   const { svg, viewport } = options;
@@ -48,6 +50,7 @@ export function attachMeasure(options: MeasureOptions): Measure {
         createSvg('circle', { class: 'measure__dot', cx: p[0], cy: p[1], r: 4 / zoom }),
       ),
     );
+    group.classList.toggle('is-finished', finished);
     options.onChange(pathLength(list), finished, points.length);
   }
 
@@ -58,7 +61,10 @@ export function attachMeasure(options: MeasureOptions): Measure {
     render();
   }
 
-  function finish(): void {
+  /** Stops the ruler. `keepCursor` adds the current mouse position as the last point. */
+  function finish(keepCursor: boolean): void {
+    if (finished || points.length === 0) return;
+    if (keepCursor && cursor) points.push(cursor);
     if (points.length < 2) return;
     finished = true;
     cursor = null;
@@ -66,13 +72,27 @@ export function attachMeasure(options: MeasureOptions): Measure {
   }
 
   svg.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0 || e.defaultPrevented || !options.isActive()) return;
+    if (!options.isActive() || e.defaultPrevented) return;
+
+    // Right-click: stop the ruler where it is.
+    if (e.button === 2) {
+      e.preventDefault();
+      finish(true);
+      return;
+    }
+    if (e.button !== 0) return;
     e.preventDefault();
 
-    if (finished) clear();
+    // A stopped ruler stays until Esc.
+    if (finished) return;
     const p = viewport.screenToWorld(e.clientX, e.clientY);
     points.push([p.x, p.y]);
     render();
+  });
+
+  // No browser menu on right-click while measuring.
+  svg.addEventListener('contextmenu', (e) => {
+    if (options.isActive()) e.preventDefault();
   });
 
   svg.addEventListener('pointermove', (e) => {
@@ -83,7 +103,7 @@ export function attachMeasure(options: MeasureOptions): Measure {
   });
 
   svg.addEventListener('dblclick', (e) => {
-    if (!options.isActive()) return;
+    if (!options.isActive() || finished) return;
     e.preventDefault();
     // The double-click's second click added a duplicate point — drop it.
     if (points.length >= 2) {
@@ -91,12 +111,12 @@ export function attachMeasure(options: MeasureOptions): Measure {
       const b = points[points.length - 2];
       if (Math.hypot(a[0] - b[0], a[1] - b[1]) * zoom < 6) points.pop();
     }
-    finish();
+    finish(false);
   });
 
   window.addEventListener('keydown', (e) => {
     if (!options.isActive()) return;
-    if (e.key === 'Enter') finish();
+    if (e.key === 'Enter') finish(false);
   });
 
   function setZoom(scale: number): void {

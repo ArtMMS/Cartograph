@@ -1,11 +1,14 @@
 import { readAutosave, readAutosaveInfo, writeAutosave } from '../core/autosave';
+import { buildExportSvg, svgToPng } from '../core/export';
 import {
   hasFileSystemAccess,
   isCancel,
   openFile,
+  saveBlobAs,
   saveFileAs,
   writeFile,
 } from '../core/file-io';
+import { createSaveDialog } from './save-dialog';
 import type { History } from '../core/history';
 import { BASE_LAYER_ID, createBaseLayer } from '../core/layer';
 import {
@@ -38,6 +41,8 @@ export interface FileControllerOptions {
   regions: Regions;
   history: History;
   viewport: Viewport;
+  /** Whether the compass is on (default for "include compass" when exporting). */
+  isCompassVisible: () => boolean;
 }
 
 export interface FileController {
@@ -74,6 +79,8 @@ export function createFileController(options: FileControllerOptions): FileContro
     onSaveAs: () => void saveAs(),
   });
   mapView.element.append(fileBar.element);
+
+  const saveDialog = createSaveDialog(root);
 
   const startMenu = createStartMenu(root, {
     onCreate: (preset) => {
@@ -200,8 +207,9 @@ export function createFileController(options: FileControllerOptions): FileContro
     }
   }
 
+  /** Save / Ctrl+S: always the .json map file (overwrites the open file). */
   async function save(): Promise<void> {
-    if (!handle) return saveAs();
+    if (!handle) return saveJsonAs();
     if (busy) return;
     busy = true;
     try {
@@ -215,7 +223,43 @@ export function createFileController(options: FileControllerOptions): FileContro
     }
   }
 
+  /** Save as: asks for the format — map file (.json) or image (.png / .svg). */
   async function saveAs(): Promise<void> {
+    if (busy) return;
+    const choice = await saveDialog.open({ compass: options.isCompassVisible() });
+    if (!choice) return;
+    if (choice.format === 'json') return saveJsonAs();
+    return exportImage(choice.format, { labels: choice.labels, compass: choice.compass });
+  }
+
+  async function exportImage(
+    format: 'png' | 'svg',
+    exportOptions: { labels: boolean; compass: boolean },
+  ): Promise<void> {
+    if (busy) return;
+    busy = true;
+    try {
+      const svgText = buildExportSvg(mapView.svg, exportOptions);
+      const blob =
+        format === 'png'
+          ? await svgToPng(svgText)
+          : new Blob([svgText], { type: 'image/svg+xml' });
+      const saved = await saveBlobAs(
+        blob,
+        `${name}.${format}`,
+        format === 'png' ? 'PNG image' : 'SVG image',
+        format === 'png' ? 'image/png' : 'image/svg+xml',
+        `.${format}`,
+      );
+      toast(`✓ Exported ${saved}`, 'success');
+    } catch (err) {
+      if (!isCancel(err)) toast(`Could not export: ${errorMessage(err)}`, 'error');
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function saveJsonAs(): Promise<void> {
     if (busy) return;
     busy = true;
     try {

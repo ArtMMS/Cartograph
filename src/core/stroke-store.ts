@@ -1,6 +1,6 @@
 import type { Stroke } from './stroke';
 
-export type StrokePatch = Partial<Pick<Stroke, 'color' | 'size'>>;
+export type StrokePatch = Partial<Pick<Stroke, 'color' | 'size' | 'style' | 'points' | 'element'>>;
 
 export interface RemovedStroke {
   stroke: Stroke;

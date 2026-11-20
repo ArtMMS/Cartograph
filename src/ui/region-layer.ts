@@ -8,6 +8,8 @@ export interface RegionLayer {
   /** Keeps labels the same size on screen at any zoom. */
   setZoom(scale: number): void;
   setSelected(id: string | null): void;
+  /** View mode: black dashed outline around the region being read. */
+  setViewed(id: string | null): void;
   /** Outline preview while drawing a new region (null hides it). */
   setPreview(points: [number, number][] | null, color: string): void;
 }
@@ -36,6 +38,7 @@ export function createRegionLayer(
   const cache = new Map<string, CachedRegion>();
   let zoom = 1;
   let selectedId: string | null = null;
+  let viewedId: string | null = null;
 
   function sync(regions: readonly Region[], layers: readonly Layer[], view: RegionView): void {
     const visibleLayers = new Set(layers.filter((l) => l.visible).map((l) => l.id));
@@ -121,7 +124,13 @@ export function createRegionLayer(
   function applySelection(): void {
     for (const [id, cached] of cache) {
       cached.shape.classList.toggle('is-selected', id === selectedId);
+      cached.shape.classList.toggle('is-viewed', id === viewedId);
     }
+  }
+
+  function setViewed(id: string | null): void {
+    viewedId = id;
+    applySelection();
   }
 
   function setPreview(points: [number, number][] | null, color: string): void {
@@ -134,7 +143,7 @@ export function createRegionLayer(
     preview.style.setProperty('--region-color', color);
   }
 
-  return { sync, setZoom, setSelected, setPreview };
+  return { sync, setZoom, setSelected, setViewed, setPreview };
 }
 
 function rank(type: RegionType): number {

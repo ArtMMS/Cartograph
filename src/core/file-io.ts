@@ -64,6 +64,34 @@ export async function saveFileAs(
   return undefined;
 }
 
+/** Saves any file (e.g. an exported image), asking where; falls back to a download. */
+export async function saveBlobAs(
+  blob: Blob,
+  suggestedName: string,
+  description: string,
+  mime: string,
+  extension: string,
+): Promise<string> {
+  if (typeof window.showSaveFilePicker === 'function') {
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types: [{ description, accept: { [mime]: [extension] } }],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(blob);
+    await writable.close();
+    return handle.name;
+  }
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = suggestedName;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  return suggestedName;
+}
+
 function pickFileWithInput(accept: string): Promise<File> {
   return new Promise((resolve, reject) => {
     const input = document.createElement('input');

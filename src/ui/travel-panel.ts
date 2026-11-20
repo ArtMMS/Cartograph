@@ -13,7 +13,7 @@ export function createTravelPanel(onClear: () => void): TravelPanel {
   element.className = 'travel';
 
   element.innerHTML = `
-    <p class="travel__hint">Click to add points along the route · double-click or Enter to finish · Esc to clear</p>
+    <p class="travel__hint">Left-click to add points along the route · <strong>right-click</strong> (or double-click / Enter) stops the ruler · <strong>Esc</strong> clears it</p>
     <div class="travel__distance">
       <span class="travel__km">0 km</span>
       <span class="travel__mi"></span>
@@ -29,7 +29,9 @@ export function createTravelPanel(onClear: () => void): TravelPanel {
 
   function render(distanceKm: number, finished: boolean, points: number): void {
     km.textContent = formatDistance(distanceKm);
-    mi.textContent = `${(distanceKm / 1.609).toFixed(1)} mi${finished ? '' : points > 0 ? ' · measuring…' : ''}`;
+    mi.textContent = `${(distanceKm / 1.609).toFixed(1)} mi${
+      finished ? ' · 📌 stopped (Esc to clear)' : points > 0 ? ' · measuring…' : ''
+    }`;
 
     list.replaceChildren(
       ...TRAVEL_MODES.map((mode) => {

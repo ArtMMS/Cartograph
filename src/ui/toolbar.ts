@@ -4,6 +4,8 @@ import { TOOLS, type ToolId } from '../tools/tool-ids';
 export interface ToolbarOptions {
   onSelectTool: (id: ToolId) => void;
   onToggleTheme: () => void;
+  onToggleCompass: () => void;
+  onToggleViewMode: () => void;
 }
 
 export interface Toolbar {
@@ -11,6 +13,9 @@ export interface Toolbar {
   setActive(id: ToolId): void;
   /** Updates the theme button icon (☀️ light / 🌕 dark). */
   setTheme(theme: Theme): void;
+  setCompass(on: boolean): void;
+  /** View mode: hides the editing tools. */
+  setViewMode(on: boolean): void;
 }
 
 export function createToolbar(options: ToolbarOptions): Toolbar {
@@ -36,9 +41,16 @@ export function createToolbar(options: ToolbarOptions): Toolbar {
   spacer.className = 'toolbar__spacer';
   element.append(spacer);
 
+  const viewButton = createButton('📖', 'View', 'View mode: just browse and read notes');
+  viewButton.classList.add('toolbar__view');
+  viewButton.addEventListener('click', options.onToggleViewMode);
+
+  const compassButton = createButton('🧭', 'Compass', 'Show compass rose and scale');
+  compassButton.addEventListener('click', options.onToggleCompass);
+
   const themeButton = createButton('☀️', 'Light', 'Toggle light/dark mode');
   themeButton.addEventListener('click', options.onToggleTheme);
-  element.append(themeButton);
+  element.append(viewButton, compassButton, themeButton);
 
   function setActive(id: ToolId): void {
     for (const [toolId, button] of buttons) {
@@ -53,7 +65,19 @@ export function createToolbar(options: ToolbarOptions): Toolbar {
     label.textContent = theme === 'dark' ? 'Dark' : 'Light';
   }
 
-  return { element, setActive, setTheme };
+  function setCompass(on: boolean): void {
+    compassButton.classList.toggle('is-active', on);
+  }
+
+  function setViewMode(on: boolean): void {
+    viewButton.classList.toggle('is-active', on);
+    viewButton.querySelector('.toolbar__label')!.textContent = on ? 'Edit' : 'View';
+    viewButton.querySelector('.toolbar__icon')!.textContent = on ? '✏️' : '📖';
+    viewButton.title = on ? 'Back to editing' : 'View mode: just browse and read notes';
+    for (const button of buttons.values()) button.hidden = on;
+  }
+
+  return { element, setActive, setTheme, setCompass, setViewMode };
 }
 
 function createButton(icon: string, label: string, title: string): HTMLButtonElement {

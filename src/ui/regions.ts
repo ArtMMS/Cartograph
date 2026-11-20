@@ -47,6 +47,16 @@ export interface Regions {
   onToolChange(id: ToolId): void;
   hasSelection(): boolean;
   deleteSelection(): void;
+  duplicateSelection(): void;
+  /** Selects a region (if editable) and zooms the map to it (search). */
+  focus(id: string, select: boolean): void;
+  /** View mode: black dashed outline around a region (null clears it). */
+  highlight(id: string | null): void;
+  /** Smallest visible region at a point (ignores locks — for reading). */
+  findVisibleAt(x: number, y: number): Region | null;
+  /** "Farawen › Terras Selvagens" for a region (its parents) or for any point. */
+  pathOf(id: string): string;
+  pathAt(x: number, y: number): string;
   clearSelection(): void;
   refreshSelection(): void;
 }
@@ -100,6 +110,7 @@ export function createRegions(options: RegionsOptions): Regions {
     onType: changeType,
     onParent: changeParent,
     onDelete: () => deleteSelection(),
+    onDuplicate: () => duplicateSelection(),
   });
 
   function editMergeable(field: 'name' | 'notes' | 'color', label: string, value: string): void {
@@ -246,6 +257,26 @@ export function createRegions(options: RegionsOptions): Regions {
       },
     });
     sidebar.setStatus(`Deleted "${region.name}"`);
+  }
+
+  function isRegionVisible(region: Region): boolean {
+    const layer = layers.get(region.layerId);
+    return !!layer?.visible && !store.getView().hiddenTypes.includes(region.type);
+  }
+
+  /** Smallest visible region containing the point (locked layers included). */
+  function findVisibleAt(x: number, y: number): Region | null {
+    let best: Region | null = null;
+    let bestArea = Infinity;
+    for (const r of store.all()) {
+      if (!isRegionVisible(r) || !pointInPolygon(x, y, r.points)) continue;
+      const area = polygonArea(r.points);
+      if (area < bestArea) {
+        best = r;
+        bestArea = area;
+      }
+    }
+    return best;
   }
 
   /** Smallest selectable region containing the point. */
@@ -418,6 +449,16 @@ export function createRegions(options: RegionsOptions): Regions {
   // ---------- Clicking regions with the Select tool ----------
 
   // Runs after the stroke Select tool (registered later), so strokes and markers win.
+  // Dragging a region that is already selected moves it.
+  let move: {
+    pointerId: number;
+    id: string;
+    startX: number;
+    startY: number;
+    origin: Point[];
+    moved: boolean;
+  } | null = null;
+
   svg.addEventListener('pointerdown', (e) => {
     if (e.button !== 0 || options.getActiveTool() !== 'select' || viewport.isPanKeyDown()) return;
     if (e.defaultPrevented || drawing.hasSelection()) {
@@ -425,8 +466,80 @@ export function createRegions(options: RegionsOptions): Regions {
       return;
     }
     const p = viewport.screenToWorld(e.clientX, e.clientY);
+    const selected = selectedId ? store.get(selectedId) : undefined;
+
+    if (selected && pointInPolygon(p.x, p.y, selected.points)) {
+      e.preventDefault();
+      svg.setPointerCapture(e.pointerId);
+      move = {
+        pointerId: e.pointerId,
+        id: selected.id,
+        startX: p.x,
+        startY: p.y,
+        origin: selected.points,
+        moved: false,
+      };
+      return;
+    }
     select(regionAt(p.x, p.y)?.id ?? null);
   });
+
+  svg.addEventListener('pointermove', (e) => {
+    if (!move || e.pointerId !== move.pointerId) return;
+    const p = viewport.screenToWorld(e.clientX, e.clientY);
+    const dx = p.x - move.startX;
+    const dy = p.y - move.startY;
+    if (!move.moved && Math.hypot(dx, dy) * viewport.getScale() < 3) return;
+    move.moved = true;
+    store.updateShape(move.id, translate(move.origin, dx, dy));
+  });
+
+  const endMove = (e: PointerEvent): void => {
+    if (!move || e.pointerId !== move.pointerId) return;
+    if (svg.hasPointerCapture(e.pointerId)) svg.releasePointerCapture(e.pointerId);
+    const region = store.get(move.id);
+    if (move.moved && region) {
+      const { id, origin } = move;
+      const after = region.points;
+      history.push({
+        label: 'Move region',
+        undo: () => store.updateShape(id, origin),
+        redo: () => store.updateShape(id, after),
+      });
+    } else if (!move.moved) {
+      // A simple click inside the selected region: select the region under the mouse
+      // (e.g. a smaller region inside it).
+      const p = viewport.screenToWorld(e.clientX, e.clientY);
+      select(regionAt(p.x, p.y)?.id ?? null);
+    }
+    move = null;
+  };
+  svg.addEventListener('pointerup', endMove);
+  svg.addEventListener('pointercancel', endMove);
+
+  function translate(points: Point[], dx: number, dy: number): Point[] {
+    return points.map(([x, y]) => [x + dx, y + dy] as Point);
+  }
+
+  function duplicateSelection(): void {
+    const region = selectedId ? store.get(selectedId) : undefined;
+    if (!region) return;
+    const offset = 20 / viewport.getScale();
+    const copy: Region = {
+      ...region,
+      id: crypto.randomUUID(),
+      name: `${region.name} (copy)`,
+      points: translate(region.points, offset, offset),
+    };
+    store.insert(copy);
+    history.push({
+      label: 'Duplicate region',
+      undo: () => store.remove(copy.id),
+      redo: () => store.insert(copy),
+    });
+    select(copy.id);
+    sidebar.setStatus(`Duplicated "${region.name}"`);
+  }
 
   // ---------- Tools ----------
 
@@ -443,6 +556,38 @@ export function createRegions(options: RegionsOptions): Regions {
     onToolChange,
     hasSelection: () => selectedId !== null,
     deleteSelection,
+    duplicateSelection,
+    focus: (id, shouldSelect) => {
+      const region = store.get(id);
+      if (!region) return;
+      const xs = region.points.map((p) => p[0]);
+      const ys = region.points.map((p) => p[1]);
+      viewport.zoomToBounds(Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys));
+      if (shouldSelect && isRegionSelectable(region)) {
+        drawing.clearSelection();
+        select(id);
+      }
+    },
+    highlight: (id) => renderer.setViewed(id),
+    findVisibleAt,
+    pathOf: (id) => {
+      const names: string[] = [];
+      let current = store.get(id);
+      const seen = new Set<string>();
+      while (current?.parentId && !seen.has(current.parentId)) {
+        seen.add(current.parentId);
+        current = store.get(current.parentId);
+        if (current) names.push(current.name);
+      }
+      return names.join(' › ');
+    },
+    pathAt: (x, y) =>
+      store
+        .all()
+        .filter((r) => isRegionVisible(r) && pointInPolygon(x, y, r.points))
+        .sort((a, b) => polygonArea(a.points) - polygonArea(b.points))
+        .map((r) => r.name)
+        .join(' › '),
     clearSelection: () => select(null),
     refreshSelection,
   };

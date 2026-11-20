@@ -26,6 +26,13 @@ export interface Markers {
   onToolChange(id: ToolId): void;
   hasSelection(): boolean;
   deleteSelection(): void;
+  duplicateSelection(): void;
+  /** Centers the map on a marker and selects it if editable (search). */
+  focus(id: string, select: boolean): void;
+  /** View mode: highlight ring around a marker (null clears it). */
+  highlight(id: string | null): void;
+  /** View mode: the visible marker under the mouse, if any. */
+  markerFromEvent(e: Event): Marker | null;
   clearSelection(): void;
   /** Call after undo/redo or layer changes. */
   refreshSelection(): void;
@@ -80,6 +87,7 @@ export function createMarkers(options: MarkersOptions): Markers {
       });
     },
     onDelete: () => deleteSelection(),
+    onDuplicate: () => duplicateSelection(),
   });
 
   function editSelected(field: 'name' | 'notes', label: string, value: string): void {
@@ -169,6 +177,27 @@ export function createMarkers(options: MarkersOptions): Markers {
       redo: () => store.remove(removed.marker.id),
     });
     sidebar.setStatus(`Deleted "${removed.marker.name}"`);
+  }
+
+  function duplicateSelection(): void {
+    const marker = selectedId ? store.get(selectedId) : undefined;
+    if (!marker) return;
+    const offset = 20 / viewport.getScale();
+    const copy: Marker = {
+      ...marker,
+      id: crypto.randomUUID(),
+      name: `${marker.name} (copy)`,
+      x: marker.x + offset,
+      y: marker.y + offset,
+    };
+    store.insert(copy);
+    history.push({
+      label: 'Duplicate marker',
+      undo: () => store.remove(copy.id),
+      redo: () => store.insert(copy),
+    });
+    select(copy.id);
+    sidebar.setStatus(`Duplicated "${marker.name}"`);
   }
 
   // ---------- Placing ----------
@@ -326,6 +355,25 @@ export function createMarkers(options: MarkersOptions): Markers {
     onToolChange,
     hasSelection: () => selectedId !== null,
     deleteSelection,
+    duplicateSelection,
+    focus: (id, shouldSelect) => {
+      const marker = store.get(id);
+      if (!marker) return;
+      viewport.centerOn(marker.x, marker.y, Math.max(viewport.getScale(), 1.2));
+      if (shouldSelect && isMarkerEditable(marker)) {
+        drawing.clearSelection();
+        select(id);
+      }
+    },
+    highlight: (id) => renderer.setSelected(id ?? selectedId),
+    markerFromEvent: (e) => {
+      const el = e.target instanceof Element ? e.target.closest('[data-marker-id]') : null;
+      const marker = el ? store.get(el.getAttribute('data-marker-id') ?? '') : undefined;
+      if (!marker) return null;
+      const layer = layers.get(marker.layerId);
+      const visible = !!layer?.visible && !store.getView().hiddenTypes.includes(marker.type);
+      return visible ? marker : null;
+    },
     clearSelection: () => select(null),
     refreshSelection,
   };

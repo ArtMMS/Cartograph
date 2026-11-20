@@ -104,6 +104,23 @@ export class Viewport {
     this.apply();
   }
 
+  /** Centers the view on a world point, optionally changing the zoom. */
+  centerOn(x: number, y: number, scale = this.scale): void {
+    if (this.width === 0 || this.height === 0) return;
+    this.scale = clamp(scale, MIN_SCALE, MAX_SCALE);
+    this.x = x - this.width / (2 * this.scale);
+    this.y = y - this.height / (2 * this.scale);
+    this.apply();
+  }
+
+  /** Zooms and centers so the box (world units) fills most of the screen. */
+  zoomToBounds(minX: number, minY: number, maxX: number, maxY: number): void {
+    const w = Math.max(maxX - minX, 1);
+    const h = Math.max(maxY - minY, 1);
+    const scale = Math.min(this.width / w, this.height / h) * 0.7;
+    this.centerOn((minX + maxX) / 2, (minY + maxY) / 2, scale);
+  }
+
   /** Zooms by `factor`, keeping the point (px, py) — in SVG pixels — fixed. */
   zoomAt(px: number, py: number, factor: number): void {
     const newScale = clamp(this.scale * factor, MIN_SCALE, MAX_SCALE);

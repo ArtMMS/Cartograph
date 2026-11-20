@@ -26,6 +26,11 @@ import { attachFileDrop } from './drop-zone';
 import { createMapView, type MapView } from './map-view';
 import { createSidebar, type Sidebar } from './sidebar';
 import { createToolbar, type Toolbar } from './toolbar';
+import { createCompassOverlay, type CompassOverlay } from './compass';
+import { createInfoBox } from './info-box';
+import { createSearchBox } from './search';
+import { getMarkerType } from '../core/marker';
+import { getRegionType } from '../core/region';
 
 export interface AppLayout {
   toolbar: Toolbar;
@@ -50,9 +55,17 @@ export function createLayout(root: HTMLElement): AppLayout {
 
   const sidebar = createSidebar();
   const mapView = createMapView();
+  let viewMode = false;
+  let compass: CompassOverlay | null = null;
   const toolbar = createToolbar({
     onSelectTool: selectTool,
     onToggleTheme: () => setTheme(theme === 'dark' ? 'light' : 'dark'),
+    onToggleCompass: () => {
+      if (!compass) return;
+      compass.setVisible(!compass.isVisible());
+      toolbar.setCompass(compass.isVisible());
+    },
+    onToggleViewMode: () => setViewMode(!viewMode),
   });
 
   root.append(toolbar.element, mapView.element, sidebar.element);
@@ -70,6 +83,7 @@ export function createLayout(root: HTMLElement): AppLayout {
       return true;
     },
     onChange: (scale) => {
+      compass?.setZoom(scale);
       mapView.setZoomLabel(scale);
       mapView.hexGrid.setScale(scale);
       transform?.render();
@@ -254,6 +268,108 @@ export function createLayout(root: HTMLElement): AppLayout {
 
   // ---------- Files ----------
 
+  // ---------- Compass rose & scale ----------
+
+  compass = createCompassOverlay(mapView.element);
+  compass.setZoom(viewport.getScale());
+  toolbar.setCompass(compass.isVisible());
+
+  // ---------- View mode (read-only: browse and read notes) ----------
+
+  const infoBox = createInfoBox(mapView.element, () => clearViewed());
+
+  function clearViewed(): void {
+    regionController.highlight(null);
+    markerController.highlight(null);
+  }
+
+  function showMarkerInfo(id: string): void {
+    const marker = markerController.store.get(id);
+    if (!marker) return;
+    clearViewed();
+    markerController.highlight(marker.id);
+    const type = getMarkerType(marker.type);
+    infoBox.show({
+      icon: type.icon,
+      title: marker.name,
+      subtitle: type.name,
+      path: regionController.pathAt(marker.x, marker.y),
+      notes: marker.notes,
+    });
+  }
+
+  function showRegionInfo(id: string): void {
+    const region = regionController.store.get(id);
+    if (!region) return;
+    clearViewed();
+    regionController.highlight(region.id);
+    const type = getRegionType(region.type);
+    infoBox.show({
+      icon: type.icon,
+      title: region.name,
+      subtitle: type.name,
+      path: regionController.pathOf(region.id),
+      notes: region.notes,
+    });
+  }
+
+  // A click (not a drag) in View mode opens the notes of what's under the mouse.
+  let viewClick: { x: number; y: number } | null = null;
+  mapView.svg.addEventListener('pointerdown', (e) => {
+    viewClick = viewMode && e.button === 0 ? { x: e.clientX, y: e.clientY } : null;
+  });
+  mapView.svg.addEventListener('pointerup', (e) => {
+    if (!viewMode || !viewClick) return;
+    const moved = Math.hypot(e.clientX - viewClick.x, e.clientY - viewClick.y);
+    viewClick = null;
+    if (moved > 4) return;
+
+    const marker = markerController.markerFromEvent(e);
+    if (marker) {
+      showMarkerInfo(marker.id);
+      return;
+    }
+    const p = viewport.screenToWorld(e.clientX, e.clientY);
+    const region = regionController.findVisibleAt(p.x, p.y);
+    if (region) {
+      showRegionInfo(region.id);
+    } else {
+      infoBox.hide();
+      clearViewed();
+    }
+  });
+
+  function setViewMode(on: boolean): void {
+    viewMode = on;
+    root.classList.toggle('is-view-mode', on);
+    toolbar.setViewMode(on);
+    drawing.clearSelection();
+    markerController.clearSelection();
+    regionController.clearSelection();
+    measure?.clear();
+    infoBox.hide();
+    clearViewed();
+    selectTool('pan');
+    sidebar.setStatus(on ? 'View mode' : 'Edit mode');
+  }
+
+  // ---------- Search ----------
+
+  const search = createSearchBox(
+    () => ({ markers: markerController.store.all(), regions: regionController.store.all() }),
+    (result) => {
+      if (result.kind === 'marker') {
+        markerController.focus(result.item.id, !viewMode);
+        if (viewMode) showMarkerInfo(result.item.id);
+      } else {
+        regionController.focus(result.item.id, !viewMode);
+        if (viewMode) showRegionInfo(result.item.id);
+      }
+      if (!viewMode && activeTool !== 'select') selectTool('select');
+    },
+  );
+  mapView.element.append(search.element);
+
   const files = createFileController({
     root,
     mapView,
@@ -262,6 +378,7 @@ export function createLayout(root: HTMLElement): AppLayout {
     regions: regionController,
     history,
     viewport,
+    isCompassVisible: () => compass?.isVisible() ?? false,
   });
 
   // ---------- Undo / redo & shortcuts ----------
@@ -292,6 +409,8 @@ export function createLayout(root: HTMLElement): AppLayout {
       else drawing.deleteSelection();
     },
     onEscape: () => {
+      infoBox.hide();
+      clearViewed();
       drawing.clearSelection();
       markerController.clearSelection();
       regionController.clearSelection();
@@ -300,6 +419,13 @@ export function createLayout(root: HTMLElement): AppLayout {
     onSave: files.save,
     onSaveAs: files.saveAs,
     onOpen: files.open,
+    onDuplicate: () => {
+      if (markerController.hasSelection()) markerController.duplicateSelection();
+      else if (regionController.hasSelection()) regionController.duplicateSelection();
+      else drawing.duplicateSelection();
+    },
+    onSearch: () => search.focus(),
+    canEdit: () => !viewMode,
   });
 
   // ---------- Tools & theme ----------

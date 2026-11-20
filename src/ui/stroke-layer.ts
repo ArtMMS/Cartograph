@@ -1,6 +1,7 @@
 import type { BackgroundImage } from '../core/background';
 import type { Layer } from '../core/layer';
-import { getStrokePath, type Stroke } from '../core/stroke';
+import { getStrokeParts, type Stroke } from '../core/stroke';
+import type { DrawStyle, StrokeStyle } from '../core/stroke-style';
 import { createSvg } from '../core/svg';
 
 export interface StrokeLayer {
@@ -10,6 +11,8 @@ export interface StrokeLayer {
   setPreview(stroke: Stroke | null): void;
   /** Highlights the selected stroke (null clears it). */
   setSelected(id: string | null): void;
+  /** Circle showing where the pencil will snap (null hides it). `r` in world units. */
+  setSnapHint(point: [number, number] | null, r: number): void;
   /** The SVG group of a layer (other renderers, like markers, draw inside it). */
   getGroup(layerId: string): SVGGElement | undefined;
 }
@@ -20,17 +23,21 @@ interface CachedImage {
 }
 
 interface CachedPath {
-  path: SVGPathElement;
+  /** One <g> per stroke, with one <path> per part (symbols can have several colors). */
+  path: SVGGElement;
   points: Stroke['points'];
   size: number;
   color: string;
+  style: StrokeStyle | null;
+  element: DrawStyle | undefined;
 }
 
 /** Draws strokes as filled SVG paths, one SVG group per layer. */
 export function createStrokeLayer(group: SVGGElement): StrokeLayer {
   const layersGroup = createSvg('g', { class: 'layers' });
-  const preview = createSvg('path', { class: 'stroke stroke--preview' });
-  group.append(layersGroup, preview);
+  const preview = createSvg('g', { class: 'stroke stroke--preview' });
+  const snapHint = createSvg('circle', { class: 'snap-hint', r: 0 });
+  group.append(layersGroup, preview, snapHint);
 
   const groups = new Map<string, SVGGElement>();
   const cache = new Map<string, CachedPath>();
@@ -79,19 +86,29 @@ export function createStrokeLayer(group: SVGGElement): StrokeLayer {
 
       let cached = cache.get(stroke.id);
       if (!cached) {
-        const path = createSvg('path', { class: 'stroke', 'data-stroke-id': stroke.id });
-        cached = { path, points: [], size: -1, color: '' };
+        const path = createSvg('g', { class: 'stroke', 'data-stroke-id': stroke.id });
+        cached = { path, points: [], size: -1, color: '', style: null, element: undefined };
         cache.set(stroke.id, cached);
       }
 
-      // Only recompute the outline when the shape or size changed.
-      if (cached.points !== stroke.points || cached.size !== stroke.size) {
-        cached.path.setAttribute('d', getStrokePath(stroke));
+      // Only recompute the shape when the points, size or style changed.
+      const style = stroke.style ?? 'line';
+      if (
+        cached.points !== stroke.points ||
+        cached.size !== stroke.size ||
+        cached.style !== style ||
+        cached.element !== stroke.element ||
+        // Areas: the fill kind (land/water) depends on the color.
+        (style === 'area' && cached.color !== stroke.color)
+      ) {
+        applyShape(cached.path, stroke);
         cached.points = stroke.points;
         cached.size = stroke.size;
+        cached.style = style;
+        cached.element = stroke.element;
       }
       if (cached.color !== stroke.color) {
-        cached.path.setAttribute('fill', stroke.color);
+        cached.path.style.setProperty('--stroke-color', stroke.color);
         cached.color = stroke.color;
       }
 
@@ -133,11 +150,11 @@ export function createStrokeLayer(group: SVGGElement): StrokeLayer {
 
   function setPreview(stroke: Stroke | null): void {
     if (!stroke) {
-      preview.setAttribute('d', '');
+      preview.replaceChildren();
       return;
     }
-    preview.setAttribute('d', getStrokePath(stroke, false));
-    preview.setAttribute('fill', stroke.color);
+    applyShape(preview, stroke, false);
+    preview.style.setProperty('--stroke-color', stroke.color);
   }
 
   function setSelected(id: string | null): void {
@@ -151,7 +168,36 @@ export function createStrokeLayer(group: SVGGElement): StrokeLayer {
     }
   }
 
-  return { sync, setPreview, setSelected, getGroup: (id) => groups.get(id) };
+  function setSnapHint(point: [number, number] | null, r: number): void {
+    snapHint.style.display = point ? '' : 'none';
+    if (!point) return;
+    snapHint.setAttribute('cx', String(point[0]));
+    snapHint.setAttribute('cy', String(point[1]));
+    snapHint.setAttribute('r', String(r));
+  }
+  setSnapHint(null, 0);
+
+  return { sync, setPreview, setSelected, setSnapHint, getGroup: (id) => groups.get(id) };
+}
+
+/** Rebuilds the paths of a stroke group (one per part) and its style class. */
+function applyShape(group: SVGGElement, stroke: Stroke, finished = true): void {
+  const style = stroke.style ?? 'line';
+  const parts = getStrokeParts(stroke, finished);
+
+  group.replaceChildren(
+    ...parts.map((part) => {
+      const path = createSvg('path', { class: `part part--${part.cls}`, d: part.d });
+      for (const [name, value] of Object.entries(part.attrs ?? {})) path.setAttribute(name, value);
+      return path;
+    }),
+  );
+
+  for (const cls of [...group.classList]) {
+    if (cls.startsWith('stroke--') && cls !== 'stroke--preview') group.classList.remove(cls);
+  }
+  group.classList.add(`stroke--${style}`);
+  if (stroke.element) group.classList.add(`stroke--${stroke.element}`);
 }
 
 /** Puts `child` at position `index` inside `parent` (only moves it if needed). */

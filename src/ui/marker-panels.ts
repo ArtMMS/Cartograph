@@ -91,6 +91,7 @@ export interface MarkerDetailsHandlers {
   onType(type: MarkerType): void;
   onNotes(notes: string): void;
   onDelete(): void;
+  onDuplicate(): void;
 }
 
 export interface MarkerDetails {
@@ -111,7 +112,10 @@ export function createMarkerDetails(handlers: MarkerDetailsHandlers): MarkerDeta
     </select>
     <div class="marker-details__notes-slot"></div>
     <p class="marker-details__pos"></p>
-    <button type="button" class="panel-button panel-button--danger marker-details__delete">🗑 Delete marker (Del)</button>
+    <div class="button-row">
+      <button type="button" class="panel-button marker-details__duplicate">⧉ Duplicate (Ctrl+D)</button>
+      <button type="button" class="panel-button panel-button--danger marker-details__delete">🗑 Delete (Del)</button>
+    </div>
   `;
 
   const name = element.querySelector<HTMLInputElement>('.marker-details__name')!;
@@ -128,6 +132,9 @@ export function createMarkerDetails(handlers: MarkerDetailsHandlers): MarkerDeta
   element
     .querySelector('.marker-details__delete')!
     .addEventListener('click', handlers.onDelete);
+  element
+    .querySelector('.marker-details__duplicate')!
+    .addEventListener('click', handlers.onDuplicate);
 
   let shownId: string | null = null;
 

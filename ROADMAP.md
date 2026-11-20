@@ -69,18 +69,23 @@ Fase 7 — Regiões e nações
 [x] Ferramenta para calcular distância (km) e definir quantos dias de viagem (SEMPRE falar quantos dias, horas e minutos serão necessários) (separado por vários meios de transporte; a pé, a cavalo / carroça, barco, voando...)
 
 Fase 8 — Encaixe e edição
-[ ] Snap: traço começa/termina grudado na ponta de outro traço próximo
-[ ] Ligar/desligar snap e ajustar a distância
-[ ] Mover e duplicar elementos selecionados
-[ ] Fazer desenho de elementos incluir simbolos que representem (usar a imagem de exemplo)
+[x] Snap: traço começa/termina grudado na ponta de outro traço próximo
+[x] Ligar/desligar snap e ajustar a distância
+[x] Mover e duplicar elementos selecionados
+[x] Fazer desenho de elementos incluir simbolos que representem (usar a imagem de exemplo)
 
 Fase 9 — Extras
-[ ] Exportar o mapa como PNG/SVG (com ou sem legendas)
-[ ] Busca por nome (cidades e regiões)
-[ ] Régua de distância com escala configurável
-[ ] Rosa dos ventos e escala no canto do mapa
-[ ] Modo "visualização" (só navegar e ler notas, sem editar)
+[x] Exportar o mapa como PNG/SVG (com ou sem legendas)
+    - Usar o botão de "Save As" para isso. Ai deixa o "save" e o CTRL + S para salvar APENAS o JSON
+[x] Busca por nome (cidades e regiões)
+[x] Fix Régua de Distância
+    - Se apertar com o botão direito, para de mexer a régua; deixa ela parada. Mas continua mostrando a distância - só limpa se apertar ESC
+[x] Rosa dos ventos e escala no canto do mapa
+    - Botãozinho em cima do "Light e Dark Mode" para habilitar a rosa dos ventos (usar rosa dos ventos em inglês)
+[x] Modo "visualização" (só navegar e ler notas, sem editar)
+    - No modo visualização, ao apertar em uma região (seja continente, nation, region ou area) irá fazer um tracejado preto na região e irá exibir uma caixa de texto de tamanho editável
 
 Ideias futuras
 [ ] Múltiplos mapas ligados (clicar em uma cidade abre o mapa dela)
-[ ] Gerar terreno automaticamente
+[ ] Gerar terreno automaticamente (para continentes e ilhas (ilhas sozinhas ou arquipélagos))
+    [ ] Gerar elementos geográficos automaticamente; mas fazer de forma consistente e que tenha algum sentido com montanhas, florestas, pântanos e etc...

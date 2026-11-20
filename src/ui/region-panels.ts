@@ -158,6 +158,7 @@ export interface RegionDetailsHandlers {
   onColor(color: string): void;
   onNotes(notes: string): void;
   onDelete(): void;
+  onDuplicate(): void;
 }
 
 export interface RegionDetails {
@@ -188,7 +189,11 @@ export function createRegionDetails(handlers: RegionDetailsHandlers): RegionDeta
     </label>
     <div class="region-details__notes"></div>
     <p class="marker-details__pos region-details__area"></p>
-    <button type="button" class="panel-button panel-button--danger region-details__delete">🗑 Delete region (Del)</button>
+    <div class="button-row">
+      <button type="button" class="panel-button region-details__duplicate">⧉ Duplicate (Ctrl+D)</button>
+      <button type="button" class="panel-button panel-button--danger region-details__delete">🗑 Delete (Del)</button>
+    </div>
+    <p class="marker-types__hint">Drag the selected region on the map to move it</p>
   `;
 
   const color = element.querySelector<HTMLInputElement>('.region-details__color')!;
@@ -208,6 +213,9 @@ export function createRegionDetails(handlers: RegionDetailsHandlers): RegionDeta
   type.addEventListener('change', () => handlers.onType(type.value as RegionType));
   parent.addEventListener('change', () => handlers.onParent(parent.value || null));
   element.querySelector('.region-details__delete')!.addEventListener('click', handlers.onDelete);
+  element
+    .querySelector('.region-details__duplicate')!
+    .addEventListener('click', handlers.onDuplicate);
 
   let shownId: string | null = null;
 

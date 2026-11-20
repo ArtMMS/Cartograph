@@ -14,6 +14,7 @@ import {
   type RegionView,
 } from './region';
 import type { Stroke, StrokePoint } from './stroke';
+import { isStrokeStyle } from './stroke-style';
 
 export const MAP_FILE_VERSION = 1;
 export const MAP_FILE_APP = 'cartograph';
@@ -146,6 +147,9 @@ function isLayer(value: unknown): value is Layer {
 }
 
 function isStroke(value: unknown): value is Stroke {
+  if (isObject(value) && value.style !== undefined && !isStrokeStyle(value.style)) {
+    value.style = 'line';
+  }
   return (
     isObject(value) &&
     typeof value.id === 'string' &&

@@ -1,11 +1,13 @@
 import { PALETTE, type PalettePreset } from '../core/palette';
 import { MAX_BRUSH_SIZE, MIN_BRUSH_SIZE, type Brush } from '../core/stroke';
+import { STROKE_STYLES, isDrawStyle, type DrawStyle } from '../core/stroke-style';
 import { formatDistance, mapScale } from '../core/map-scale';
 
 export interface BrushPanelHandlers {
   onColor(color: string): void;
   onSize(size: number): void;
-  /** Palette click: sets color and size together. */
+  onStyle(style: DrawStyle): void;
+  /** Palette click: sets color, size and style together. */
   onPreset(preset: PalettePreset): void;
 }
 
@@ -29,6 +31,13 @@ export function createBrushPanel(handlers: BrushPanelHandlers): BrushPanel {
     </label>
 
     <label class="field">
+      <span class="field__label">Style</span>
+      <select class="brush-panel__style">
+        ${STROKE_STYLES.map((s) => `<option value="${s.id}">${s.icon} ${s.name}</option>`).join('')}
+      </select>
+    </label>
+
+    <label class="field">
       <span class="field__label">Size</span>
       <input class="field__range brush-panel__size" type="range"
         min="${MIN_BRUSH_SIZE}" max="${MAX_BRUSH_SIZE}" step="1" />
@@ -48,6 +57,7 @@ export function createBrushPanel(handlers: BrushPanelHandlers): BrushPanel {
   const color = q<HTMLInputElement>('.brush-panel__color');
   const hex = q<HTMLInputElement>('.brush-panel__hex');
   const size = q<HTMLInputElement>('.brush-panel__size');
+  const style = q<HTMLSelectElement>('.brush-panel__style');
   const sizeNumber = q<HTMLInputElement>('.brush-panel__size-number');
   const dot = q<HTMLSpanElement>('.brush-panel__dot');
   const km = q<HTMLSpanElement>('.brush-panel__km');
@@ -59,7 +69,7 @@ export function createBrushPanel(handlers: BrushPanelHandlers): BrushPanel {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'palette__swatch';
-    button.title = `${preset.name} (size ${preset.size})`;
+    button.title = `${preset.name} (size ${preset.size}, ${STROKE_STYLES.find((s) => s.id === preset.style)?.name ?? ''})`;
     button.innerHTML = `<span class="palette__color" style="background:${preset.color}"></span><span class="palette__name">${preset.name}</span>`;
     button.addEventListener('click', () => handlers.onPreset(preset));
     swatches.set(preset.id, button);
@@ -77,6 +87,9 @@ export function createBrushPanel(handlers: BrushPanelHandlers): BrushPanel {
   });
 
   size.addEventListener('input', () => handlers.onSize(Number(size.value)));
+  style.addEventListener('change', () => {
+    if (isDrawStyle(style.value)) handlers.onStyle(style.value);
+  });
 
   sizeNumber.addEventListener('change', () => {
     const value = Number(sizeNumber.value);
@@ -96,19 +109,22 @@ export function createBrushPanel(handlers: BrushPanelHandlers): BrushPanel {
     setValue(hex, brush.color);
     setValue(size, String(brush.size));
     setValue(sizeNumber, String(brush.size));
+    style.value = brush.style;
 
     // Preview dot: grows with the size (capped so it fits the panel).
     const px = Math.max(2, Math.min(28, brush.size));
     dot.style.width = `${px}px`;
     dot.style.height = `${px}px`;
     dot.style.background = brush.color;
-    km.textContent = `≈ ${formatDistance(brush.size * mapScale.kmPerUnit)} wide`;
+    km.textContent = `≈ ${formatDistance(brush.size * mapScale.kmPerUnit)} ${
+      brush.style === 'line' || brush.style === 'border' ? 'wide' : 'symbols'
+    }`;
 
-    // Highlight the preset that matches the current color.
+    // Highlight the preset that matches the current color and style.
     for (const preset of PALETTE) {
-      swatches
-        .get(preset.id)!
-        .classList.toggle('is-active', preset.color.toLowerCase() === brush.color.toLowerCase());
+      const match =
+        preset.color.toLowerCase() === brush.color.toLowerCase() && preset.style === brush.style;
+      swatches.get(preset.id)!.classList.toggle('is-active', match);
     }
   }
 

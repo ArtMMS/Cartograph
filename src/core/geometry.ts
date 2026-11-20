@@ -23,6 +23,12 @@ export function distanceToStroke(stroke: Stroke, x: number, y: number): number {
   const points = stroke.points;
   if (points.length === 0) return Infinity;
 
+  // Filled areas: clicking anywhere inside counts.
+  if (stroke.style === 'area' && points.length >= 3) {
+    const outline = points.map((p) => [p[0], p[1]] as [number, number]);
+    if (pointInPolygon(x, y, outline)) return 0;
+  }
+
   let min = Math.hypot(x - points[0][0], y - points[0][1]);
   for (let i = 1; i < points.length; i++) {
     const [ax, ay] = points[i - 1];

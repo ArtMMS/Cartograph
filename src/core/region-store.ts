@@ -69,6 +69,14 @@ export class RegionStore {
     this.emit();
   }
 
+  /** Replaces the outline (moving a region). */
+  updateShape(id: string, points: [number, number][]): void {
+    const region = this.get(id);
+    if (!region) return;
+    region.points = points;
+    this.emit();
+  }
+
   /** Several updates with a single notification. */
   updateMany(patches: [string, RegionPatch][]): void {
     for (const [id, patch] of patches) {

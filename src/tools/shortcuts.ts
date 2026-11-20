@@ -9,15 +9,20 @@ export interface ShortcutHandlers {
   onSave: () => void;
   onSaveAs: () => void;
   onOpen: () => void;
+  onDuplicate: () => void;
+  onSearch: () => void;
+  /** False in View mode: editing shortcuts are ignored. */
+  canEdit: () => boolean;
 }
 
 /**
  * Keyboard shortcuts:
  * - Tool letters (H, V, P, E, M, R)
  * - Ctrl+Z undo, Ctrl+Y / Ctrl+Shift+Z redo
+ * - Ctrl+D: duplicate selection
  * - Delete / Backspace: delete selection
  * - Esc: clear selection
- * - Ctrl+S save, Ctrl+Shift+S save as, Ctrl+O open
+ * - Ctrl+S save, Ctrl+Shift+S save as, Ctrl+O open, Ctrl+F search
  */
 export function attachShortcuts(handlers: ShortcutHandlers): void {
   window.addEventListener('keydown', (e) => {
@@ -35,8 +40,19 @@ export function attachShortcuts(handlers: ShortcutHandlers): void {
       handlers.onOpen();
       return;
     }
+    if ((e.ctrlKey || e.metaKey) && key === 'f') {
+      e.preventDefault();
+      handlers.onSearch();
+      return;
+    }
 
     if (isTypingTarget(e.target)) return;
+
+    if (e.key === 'Escape') {
+      handlers.onEscape();
+      return;
+    }
+    if (!handlers.canEdit()) return;
 
     if (e.ctrlKey || e.metaKey) {
       if (key === 'z' && !e.shiftKey) {
@@ -45,6 +61,9 @@ export function attachShortcuts(handlers: ShortcutHandlers): void {
       } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
         e.preventDefault();
         handlers.onRedo();
+      } else if (key === 'd') {
+        e.preventDefault(); // stops the browser's "bookmark page"
+        handlers.onDuplicate();
       }
       return;
     }
